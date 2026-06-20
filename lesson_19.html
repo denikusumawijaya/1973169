@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinguaMath — Math & Logic Tutoring</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+<style>
+/* ============== DESIGN TOKENS ============== */
+:root{
+  --green:#58cc02; --green-dark:#58a700; --green-light:#d7ffb8;
+  --blue:#1cb0f6; --blue-light:#ddf4ff; --blue-dark:#0a87d6;
+  --red:#ff4b4b; --red-light:#ffdfe0;
+  --yellow:#ffc800; --yellow-dark:#e6a700;
+  --purple:#ce82ff; --orange:#ff9600;
+  --bg:#fff; --text:#3c3c3c; --text-light:#777;
+  --border:#e5e5e5; --border-hover:#bfbfbf;
+  --bg-gray:#f7f7f7; --shadow:0 4px 0 rgba(0,0,0,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Nunito',sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+.app{max-width:820px;margin:0 auto;min-height:100vh;position:relative;background:#fff;
+     box-shadow:0 0 30px rgba(0,0,0,.05)}
+
+/* ============== TOPBAR (MAP) ============== */
+.topbar{display:flex;align-items:center;padding:14px 20px;background:#fff;
+        border-bottom:2px solid var(--border);position:sticky;top:0;z-index:10}
+.rules-btn{margin-left:auto;margin-right:20px;background:var(--blue-light);color:var(--blue-dark);
+           border:2px solid var(--blue);padding:8px 14px;border-radius:12px;font-weight:800;
+           font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.rules-btn:hover{background:#a4dcff}
+.rules-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;
+               display:none;align-items:center;justify-content:center;padding:20px}
+.rules-overlay.show{display:flex;animation:fadeUp .3s}
+.rules-modal{background:#fff;border-radius:20px;padding:30px 24px;max-width:380px;width:100%;
+             position:relative;box-shadow:0 10px 30px rgba(0,0,0,.2);text-align:center}
+.rules-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;
+             color:var(--text-light);cursor:pointer}
+.rules-title{font-size:24px;font-weight:900;color:var(--text);margin-bottom:6px}
+.rules-sub{font-size:14px;color:var(--text-light);margin-bottom:24px}
+.rule-item{display:flex;align-items:flex-start;gap:14px;text-align:left;
+           background:var(--bg-gray);padding:16px;border-radius:14px;margin-bottom:12px}
+.rule-icon{font-size:28px;background:#fff;width:50px;height:50px;border-radius:50%;
+           display:flex;align-items:center;justify-content:center;flex-shrink:0;
+           border:2px solid var(--border)}
+.rule-text b{font-size:16px;color:var(--text);display:block;margin-bottom:4px}
+.rule-text p{font-size:14px;color:var(--text-light);line-height:1.4}
+.topbar .logo{display:flex;flex-direction:column;line-height:1.1;cursor:pointer}
+.topbar .logo .logo-main{font-weight:900;font-size:18px;color:var(--green);letter-spacing:-.5px}
+.topbar .logo .logo-sub{font-weight:700;font-size:11px;color:var(--blue);letter-spacing:1.5px;margin-top:2px}
+.topbar .stats{display:flex;gap:18px;margin-left:auto;align-items:center}
+.stat{display:flex;align-items:center;gap:6px;font-weight:800;font-size:15px}
+.stat .ic{font-size:18px}
+
+/* ============== MAP VIEW ============== */
+.map-view{padding:24px 20px 120px}
+.map-header{text-align:center;margin-bottom:28px}
+.map-header h1{font-size:26px;font-weight:900;margin-bottom:6px}
+.map-header p{color:var(--text-light);font-size:14px}
+.map-container{position:relative;padding:30px 10px;min-height:920px}
+.map-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.map-node{position:absolute;width:72px;height:72px;border-radius:50%;
+          display:flex;align-items:center;justify-content:center;
+          font-size:28px;font-weight:900;cursor:pointer;z-index:2;
+          transition:transform .2s;user-select:none;
+          transform:translate(-50%,-50%)}
+.map-node.locked{background:#e5e5e5;color:#afafaf;cursor:not-allowed;box-shadow:0 4px 0 #cfcfcf}
+.map-node.available{background:var(--green);color:#fff;box-shadow:0 6px 0 var(--green-dark);
+                     animation:bounce 2s infinite}
+.map-node.completed{background:var(--yellow);color:#fff;box-shadow:0 6px 0 var(--yellow-dark)}
+.map-node.current{background:var(--blue);color:#fff;box-shadow:0 6px 0 var(--blue-dark)}
+.map-node.available:hover,.map-node.completed:hover,.map-node.current:hover{transform:translate(-50%,calc(-50% - 3px))}
+@keyframes bounce{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,calc(-50% - 5px))}}
+.node-label{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:8px;
+            font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;
+            background:#fff;padding:3px 10px;border-radius:8px;border:2px solid var(--border)}
+.node-progress{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:6px;
+               width:48px;height:6px;background:var(--border);border-radius:999px;overflow:hidden}
+.node-progress span{display:block;height:100%;background:var(--green);transition:width .4s}
+.node-tooltip{position:absolute;top:-46px;left:50%;transform:translateX(-50%);
+              background:#333;color:#fff;padding:6px 12px;border-radius:8px;
+              font-size:12px;font-weight:700;white-space:nowrap;opacity:0;pointer-events:none;
+              transition:opacity .2s;z-index:5}
+.node-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+                     border:5px solid transparent;border-top-color:#333}
+.map-node:hover .node-tooltip{opacity:1}
+
+/* ============== LESSON VIEW ============== */
+.lesson-view{display:none;position:fixed;inset:0;background:#fff;z-index:100;
+             flex-direction:column;max-width:820px;margin:0 auto}
+.lesson-view.active{display:flex}
+.lesson-topbar{display:flex;align-items:center;padding:14px 20px;gap:16px;
+               border-bottom:1px solid var(--border)}
+.lesson-close{background:none;border:none;font-size:24px;cursor:pointer;
+              color:var(--text-light);padding:4px;line-height:1}
+.lesson-progress{flex:1;height:14px;background:var(--border);border-radius:999px;overflow:hidden}
+.lesson-progress-bar{height:100%;background:var(--green);border-radius:999px;
+                     transition:width .4s ease;width:0%;position:relative}
+.lesson-progress-bar::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+                            background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);
+                            animation:shimmer 2s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.lesson-hearts{display:flex;align-items:center;gap:4px;font-weight:900;color:var(--red);font-size:18px}
+.lesson-time{font-size:13px;font-weight:800;color:var(--blue-dark);background:var(--blue-light);padding:5px 10px;border-radius:8px;border:1px solid var(--blue);white-space:nowrap}
+.node-time-label{font-size:10px;color:var(--text-light);font-weight:700;display:block;text-align:center;margin-top:2px}
+.lesson-content{flex:1;padding:24px 20px;overflow-y:auto}
+
+/* ============== THEORY CARD ============== */
+.theory-card{background:linear-gradient(135deg,#fffce8,#fff);
+             border:2px solid var(--yellow);border-radius:18px;padding:24px;
+             box-shadow:0 4px 0 var(--yellow-dark)}
+.theory-badge{display:inline-block;background:var(--yellow);color:#fff;
+              padding:4px 12px;border-radius:999px;font-size:12px;font-weight:800;
+              margin-bottom:12px;letter-spacing:.5px}
+.theory-card h2{font-size:24px;margin-bottom:14px;color:var(--text);font-weight:900}
+.theory-card .theory-body{font-size:16px;line-height:1.7;color:var(--text)}
+.theory-card .theory-body p{margin-bottom:12px}
+.formula-box{background:#fff;border-left:5px solid var(--green);padding:14px 18px;
+             margin:14px 0;font-family:'Courier New',monospace;font-size:20px;
+             font-weight:700;border-radius:6px;color:var(--green-dark)}
+.example-box{background:#fff;padding:14px 18px;margin:14px 0;border-radius:10px;
+             border:2px solid var(--border);font-size:15px}
+.example-box b{color:var(--blue-dark)}
+.tip-box{background:var(--blue-light);border:2px solid var(--blue);padding:12px 16px;
+         border-radius:10px;margin-top:14px;font-size:14px;color:var(--blue-dark)}
+.tip-box b{color:var(--blue-dark)}
+
+/* ============== QUESTION ============== */
+.q-prompt{font-size:22px;font-weight:900;margin-bottom:8px;line-height:1.3}
+.q-sub{font-size:14px;color:var(--text-light);margin-bottom:18px}
+.q-image{font-size:64px;text-align:center;margin:12px 0}
+.q-hint{font-size:13px;color:var(--text-light);font-style:italic;margin-top:8px}
+
+/* Bilingual Translation Class */
+.translation { font-size: 13px; color: var(--text-light); font-style: italic; display: block; margin-top: 4px; line-height: 1.4; }
+.option .translation, .checkbox-option .translation, .pair-item .translation { display: block; font-size: 12px; margin-top: 2px; }
+
+/* Multiple choice */
+.options{display:grid;gap:10px}
+.option{padding:14px 16px;border:2px solid var(--border);border-radius:14px;
+        cursor:pointer;font-size:16px;font-weight:700;transition:all .15s;
+        background:#fff;user-select:none;text-align:left;display:flex;
+        align-items:center;gap:12px}
+.option:hover{border-color:var(--border-hover)}
+.option .o-key{width:30px;height:30px;border-radius:8px;border:2px solid var(--border);
+               display:flex;align-items:center;justify-content:center;font-size:13px;
+               flex-shrink:0;font-weight:900;color:var(--text-light)}
+.option.selected{border-color:var(--blue);background:var(--blue-light);color:var(--blue-dark)}
+.option.selected .o-key{border-color:var(--blue);background:var(--blue);color:#fff}
+.option.correct{border-color:var(--green);background:var(--green-light);color:var(--green-dark)}
+.option.correct .o-key{border-color:var(--green);background:var(--green);color:#fff}
+.option.wrong{border-color:var(--red);background:var(--red-light);color:var(--red)}
+.option.wrong .o-key{border-color:var(--red);background:var(--red);color:#fff}
+.option.disabled{cursor:default;pointer-events:none}
+
+/* Typing */
+.typing-input{width:100%;padding:14px 16px;border:2px solid var(--border);
+              border-radius:14px;font-size:18px;font-weight:700;outline:none;
+              font-family:inherit;background:#fff;transition:all .15s}
+.typing-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-light)}
+.typing-input.correct{border-color:var(--green);background:var(--green-light)}
+.typing-input.wrong{border-color:var(--red);background:var(--red-light)}
+
+/* Dropdown */
+.sentence{font-size:20px;line-height:2.4;font-weight:700}
+.dropdown-select{display:inline-block;padding:6px 14px;border:2px solid var(--border);
+                 border-radius:12px;background:#fff;font-size:16px;font-weight:800;
+                 cursor:pointer;font-family:inherit;margin:0 4px;outline:none;
+                 color:var(--blue-dark);transition:all .15s}
+.dropdown-select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-light)}
+.dropdown-select.correct{border-color:var(--green);background:var(--green-light);color:var(--green-dark)}
+.dropdown-select.wrong{border-color:var(--red);background:var(--red-light);color:var(--red)}
+
+/* Drag and drop */
+.drag-bank{display:flex;flex-wrap:wrap;gap:8px;min-height:54px;padding:14px;
+           background:var(--bg-gray);border-radius:14px;border:2px dashed var(--border);margin-bottom:16px}
+.drag-item{padding:8px 16px;background:#fff;border:2px solid var(--border);
+           border-radius:12px;cursor:grab;font-weight:800;font-size:15px;
+           user-select:none;transition:all .15s;box-shadow:var(--shadow)}
+.drag-item:hover{transform:translateY(-2px);border-color:var(--border-hover)}
+.drag-item.dragging{opacity:.4;cursor:grabbing}
+.drag-item.placed{background:var(--blue);color:#fff;border-color:var(--blue);
+                  box-shadow:0 4px 0 var(--blue-dark)}
+.drop-zone{display:inline-flex;align-items:center;justify-content:center;
+           min-width:80px;min-height:40px;padding:4px 10px;
+           border:2px dashed var(--blue);border-radius:10px;vertical-align:middle;
+           margin:0 4px;background:var(--blue-light);transition:all .15s}
+.drop-zone.over{background:#a4dcff;border-style:solid}
+.drop-zone.filled{border-style:solid;background:#fff}
+.drop-zone.filled .drag-item{margin:0}
+
+/* Pairing */
+.pair-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pair-col{display:grid;gap:10px}
+.pair-item{padding:14px;border:2px solid var(--border);border-radius:12px;
+           background:#fff;cursor:pointer;font-weight:800;text-align:center;
+           transition:all .15s;font-size:15px}
+.pair-item:hover{border-color:var(--border-hover)}
+.pair-item.selected{border-color:var(--blue);background:var(--blue-light);color:var(--blue-dark)}
+.pair-item.matched{background:var(--green-light);border-color:var(--green);
+                   color:var(--green-dark);opacity:.5;pointer-events:none}
+.pair-item.wrong{border-color:var(--red);background:var(--red-light);
+                 animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* Checkbox */
+.checkbox-option{display:flex;align-items:center;gap:14px;padding:14px 16px;
+                 border:2px solid var(--border);border-radius:12px;cursor:pointer;
+                 user-select:none;transition:all .15s;background:#fff}
+.checkbox-option:hover{border-color:var(--border-hover)}
+.checkbox-option.checked{border-color:var(--blue);background:var(--blue-light)}
+.checkbox-box{width:26px;height:26px;border:2px solid var(--border);border-radius:8px;
+              display:flex;align-items:center;justify-content:center;flex-shrink:0;
+              font-weight:900;color:#fff;transition:all .15s}
+.checkbox-option.checked .checkbox-box{background:var(--blue);border-color:var(--blue)}
+.checkbox-option.correct{border-color:var(--green);background:var(--green-light)}
+.checkbox-option.correct .checkbox-box{background:var(--green);border-color:var(--green)}
+.checkbox-option.wrong{border-color:var(--red);background:var(--red-light)}
+.checkbox-option.wrong .checkbox-box{background:var(--red);border-color:var(--red)}
+
+/* Range */
+.range-wrap{padding:20px 0}
+.range-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.range-value{font-size:36px;font-weight:900;color:var(--green)}
+.range-unit{font-size:16px;color:var(--text-light);font-weight:700}
+.range-slider{width:100%;-webkit-appearance:none;height:14px;background:var(--border);
+              border-radius:999px;outline:none;margin:8px 0}
+.range-slider::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;
+              background:var(--green);border-radius:50%;cursor:pointer;border:5px solid #fff;
+              box-shadow:0 0 0 2px var(--green),0 2px 8px rgba(0,0,0,.2)}
+.range-slider::-moz-range-thumb{width:32px;height:32px;background:var(--green);
+              border-radius:50%;cursor:pointer;border:5px solid #fff;
+              box-shadow:0 0 0 2px var(--green),0 2px 8px rgba(0,0,0,.2)}
+.range-ticks{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;
+             color:var(--text-light);font-weight:700}
+
+/* ============== FOOTER ============== */
+.lesson-footer{padding:16px 20px;border-top:2px solid var(--border);background:#fff}
+.feedback{padding:16px;border-radius:14px;margin-bottom:12px;display:none}
+.feedback.show{display:block;animation:fadeUp .3s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.feedback.correct{background:var(--green-light)}
+.feedback.wrong{background:var(--red-light)}
+.feedback-title{font-weight:900;font-size:17px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.feedback.correct .feedback-title{color:var(--green-dark)}
+.feedback.wrong .feedback-title{color:var(--red)}
+.feedback-text{font-size:14px;color:var(--text)}
+.action-btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:16px;
+            font-weight:900;cursor:pointer;font-family:inherit;
+            background:var(--border);color:var(--text-light);transition:all .15s}
+.action-btn.active{background:var(--green);color:#fff;box-shadow:0 4px 0 var(--green-dark)}
+.action-btn.active:hover{filter:brightness(1.05)}
+.action-btn.active:active{transform:translateY(2px);box-shadow:0 2px 0 var(--green-dark)}
+.action-btn.skip{background:transparent;color:var(--text-light);box-shadow:none;
+                 border:2px solid var(--border);margin-top:8px}
+.action-btn.skip:hover{border-color:var(--border-hover)}
+
+/* ============== COMPLETE ============== */
+.complete-screen{display:none;text-align:center;padding:40px 20px;flex-direction:column;
+                 align-items:center;justify-content:center;flex:1}
+.complete-screen.show{display:flex}
+.complete-icon{font-size:90px;margin-bottom:16px;animation:pop .5s}
+@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+.complete-screen h1{font-size:34px;color:var(--yellow);margin-bottom:8px;font-weight:900;
+                    text-shadow:2px 2px 0 var(--yellow-dark)}
+.complete-screen .cs-sub{font-size:16px;color:var(--text-light);margin-bottom:24px}
+.complete-stats{display:flex;gap:14px;margin-bottom:28px;flex-wrap:wrap;justify-content:center}
+.complete-stat{background:#fff;padding:18px 28px;border-radius:16px;
+               border:2px solid var(--border);box-shadow:var(--shadow);min-width:110px}
+.complete-stat .stat-v{font-size:26px;font-weight:900;color:var(--green)}
+.complete-stat .stat-l{font-size:12px;color:var(--text-light);font-weight:700;
+                        text-transform:uppercase;letter-spacing:.5px}
+
+/* ============== RESPONSIVE ============== */
+@media (max-width:600px){
+  .pair-grid{grid-template-columns:1fr}
+  .map-node{width:60px;height:60px;font-size:22px}
+  .q-prompt{font-size:20px}
+  .topbar .stats{gap:12px;font-size:13px}
+  .lesson-content{padding:18px 16px}
+}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="logo">
+      <span class="logo-main">🧮 Math Tutoring</span>
+      <span class="logo-sub">with Deni</span>
+    </div>
+    <button class="rules-btn" id="openRulesBtn" title="Class Rules">📋 Class Rules</button>
+    <div class="stats">
+      <div class="stat"><span class="ic">🔥</span><span id="streak">0</span></div>
+      <div class="stat"><span class="ic">💎</span><span id="gems">0</span></div>
+      <div class="stat"><span class="ic">❤️</span><span id="hearts">5</span></div>
+    </div>
+  </header>
+
+  <main class="map-view" id="mapView">
+    <div class="map-header">
+      <h1>Number Patterns & Quick Tricks</h1>
+      <p>Pola Bilangan & Trik Cepat Soal Cerita Penjumlahan/Pengurangan</p>
+    </div>
+    <div class="map-container" id="mapContainer">
+      <svg class="map-svg" id="mapSvg" viewBox="0 0 800 920" preserveAspectRatio="none"></svg>
+    </div>
+  </main>
+
+  <div class="lesson-view" id="lessonView">
+    <header class="lesson-topbar">
+      <button class="lesson-close" id="lessonClose" title="Exit">✕</button>
+      <div class="lesson-progress"><div class="lesson-progress-bar" id="progressBar"></div></div>
+      <div class="lesson-time" id="lessonTime">00:00</div>
+      <div class="lesson-hearts">❤️ <span id="lessonHearts">5</span></div>
+    </header>
+    <div class="lesson-content" id="lessonContent"></div>
+    <footer class="lesson-footer">
+      <div class="feedback" id="feedback"></div>
+      <button class="action-btn" id="actionBtn">Check</button>
+      <button class="action-btn skip hidden" id="resetBtn">🔄 Reset Answer</button>
+    </footer>
+  </div>
+
+  <div class="lesson-view" id="completeView" style="background:linear-gradient(135deg,#fffce8,#d7ffb8)">
+    <div class="complete-screen show" id="completeScreen">
+      <div class="complete-icon">🏆</div>
+      <h1 id="completeTitle">Excellent!</h1>
+      <p class="cs-sub" id="completeSub">Lesson completed</p>
+      <div class="complete-stats">
+        <div class="complete-stat"><div class="stat-v" id="finalXp">+10 XP</div><div class="stat-l">XP Earned</div></div>
+        <div class="complete-stat"><div class="stat-v" id="finalAccuracy">100%</div><div class="stat-l">Accuracy</div></div>
+        <div class="complete-stat"><div class="stat-v" id="finalCorrect">0/0</div><div class="stat-l">Correct</div></div>
+      </div>
+      <button class="action-btn active" id="continueBtn" style="max-width:320px">Continue</button>
+    </div>
+  </div>
+
+  <div class="rules-overlay" id="rulesOverlay">
+    <div class="rules-modal">
+      <button class="rules-close" id="closeRulesBtn">✕</button>
+      <h2 class="rules-title">📋 Class Rules</h2>
+      <p class="rules-sub">Let's create a comfortable and conducive learning environment!</p>
+      <div class="rule-item">
+        <div class="rule-icon">🗣️</div>
+        <div class="rule-text">
+          <b>Take Turns Speaking</b>
+          <p>Respect the person speaking and wait for our turn.</p>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">🚪</div>
+        <div class="rule-text">
+          <b>Ask for Permission</b>
+          <p>Always ask the teacher for permission if you need to leave the class.</p>
+        </div>
+      </div>
+      <button class="action-btn active" id="understandBtn" style="margin-top:20px">I Understand!</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+<script>
+const App = {
+  state: {
+    hearts: 5, gems: 0, streak: 0,
+    completedLessons: [], currentLessonId: null,
+    currentStepIndex: 0, stepAnswered: false,
+    correctCount: 0, totalAnswered: 0,
+    selectedPair: null, dragSrc: null,
+  },
+  nodePositions: [
+    { x: 400, y: 60 }, { x: 580, y: 150 }, { x: 220, y: 250 },  
+    { x: 580, y: 350 }, { x: 220, y: 450 }, { x: 400, y: 560 },  
+    { x: 100, y: 680 }, { x: 250, y: 700 }, { x: 400, y: 710 },  
+    { x: 550, y: 700 }, { x: 700, y: 680 }, { x: 400, y: 870 }   
+  ],
+  lessonMeta: [
+    { id: 0, icon: "1", title: "Spiral Review", desc: "Warm-up", time: "00:00-00:10" },
+    { id: 1, icon: "2", title: "Intro & Real-World", desc: "Real-world connection", time: "00:10-00:15" },
+    { id: 2, icon: "3", title: "Problem Introduction", desc: "Problem intro", time: "00:15-00:25" },
+    { id: 3, icon: "4", title: "Guided Practice", desc: "Guided practice", time: "00:25-00:40" },
+    { id: 4, icon: "5", title: "Independent Practice", desc: "Independent practice", time: "00:40-00:55" },
+    { id: 5, icon: "6", title: "Consolidation", desc: "Consolidation & reflection", time: "00:55-01:00" },
+    { id: 6, icon: "7.1", title: "Assessment A", desc: "Optional - Fast Learner", time: "No Timer" },
+    { id: 7, icon: "7.2", title: "Assessment B", desc: "Optional - Fast Learner", time: "No Timer" },
+    { id: 8, icon: "7.3", title: "Assessment C", desc: "Optional - Fast Learner", time: "No Timer" },
+    { id: 9, icon: "7.4", title: "Assessment D", desc: "Optional - Fast Learner", time: "No Timer" },
+    { id: 10, icon: "7.5", title: "Assessment E", desc: "Optional - Fast Learner", time: "No Timer" },
+    { id: 11, icon: "8", title: "Feedback Portal", desc: "Final feedback", time: "01:00-01:05" }
+  ],
+};
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+const el = (tag, cls, html) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+};
+const LESSONS = [
+  // ===== SECTION 1: SPIRAL REVIEW WARM-UP =====
+  {
+    id: 0,
+    steps: [
+      { type: "theory", title: "The Secret Code of Ascending Patterns", body: `<p>Have you ever noticed that the numbers around us often hide a "secret code"? Imagine you are playing leapfrog: \\( 5, 10, 15, 20, \\dots \\) Every time you jump, the frog leaps 5 steps forward!</p><p>In math, this is called an <b>Ascending Arithmetic Pattern</b>. The key to reading this secret code is finding the "jump distance" that is always the same. If you know the distance, you can guess the next number with your eyes closed!</p><p class="translation">Pernahkah kamu memperhatikan bahwa angka-angka di sekitar kita sering menyimpan "kode rahasia"? Bayangkan kamu sedang bermain lompat katak: 5, 10, 15, 20... Setiap kali melompat, kataknya meloncat sejauh 5 langkah ke depan! Dalam matematika, ini disebut Pola Bilangan Aritmatika Naik. Kuncinya adalah mencari "jarak lompatan" yang selalu sama.</p>` },
+      { type: "multiple_choice", prompt: "What is the next number in the pattern \\( 5, 10, 15, \\dots \\)? <span class='translation'>(Pola bilangan berikutnya dari 5, 10, 15, ... adalah)</span>", options: ["16", "18", "20", "25"], answer: 2, explanation: "The pattern adds 5 each time (10-5=5, 15-10=5). So, 15 + 5 = 20. <span class='translation'>Pola ini menambah 5 setiap kali. Jadi, 15 + 5 = 20.</span>" },
+      { type: "typing", prompt: "Guess the next number in this jump pattern: \\( 2, 5, 8, \\dots \\) <span class='translation'>(Tebak angka berikutnya dari pola lompat ini)</span>", answer: "11", hint: "How much does it increase each time? <span class='translation'>(Tambah berapa setiap lompatan?)</span>", explanation: "The pattern adds 3 each time. So, 8 + 3 = 11. <span class='translation'>Pola ini menambah 3 setiap kali. Jadi, 8 + 3 = 11.</span>" },
+      { type: "dropdown", prompt: "Descending pattern: <span class='translation'>(Pola turun)</span>", sentence: "\\( 100, 90, 80, \\dots \\) will continue with [drop] <span class='translation'>(akan dilanjutkan dengan)</span>", options: ["70", "75", "85", "95"], answer: "70", explanation: "The pattern subtracts 10 each time (100-10=90). So, 80 - 10 = 70. <span class='translation'>Pola ini mengurangi 10 setiap kali. Jadi, 80 - 10 = 70.</span>" },
+      { type: "theory", title: "Descending Patterns (Subtraction)", body: `<p>If earlier we learned to jump forward, now imagine we are walking backward! A sequence like \\( 100, 90, 80, 70, \\dots \\) is an example of a <b>Descending Pattern</b>.</p><p>Instead of adding, we subtract the same amount at each step (here, minus 10). This pattern is very useful when you are counting down the days or calculating your remaining pocket money.</p><p class="translation">Kalau tadi kita belajar melompat ke depan, sekarang bayangkan kita berjalan mundur! Deret angka seperti 100, 90, 80, 70... adalah contoh Pola Bilangan Turun. Alih-alih menambah, kita mengurangi dengan jumlah yang sama setiap langkahnya. Pola ini sangat berguna saat kamu menghitung mundur hari atau menghitung sisa uang jajan.</p>` },
+      { type: "typing", prompt: "Complete this descending pattern: \\( 50, 45, 40, \\dots \\) <span class='translation'>(Selesaikan pola mundur ini)</span>", answer: "35", explanation: "The pattern subtracts 5 each time. So, 40 - 5 = 35. <span class='translation'>Pola ini mengurangi 5 setiap kali. Jadi, 40 - 5 = 35.</span>" },
+      { type: "multiple_choice", prompt: "You have 98 candies, and a friend gives you 2 more. What is the total? <span class='translation'>(Kamu punya 98 butir permen, ditambah 2 butir lagi. Berapa jumlah totalnya?)</span>", options: ["90", "100", "102", "96"], answer: 1, explanation: "98 is very close to 100. 98 + 2 = 100. <span class='translation'>98 sangat dekat dengan 100. 98 + 2 = 100.</span>" },
+      { type: "range", prompt: "The result of \\( 99 + 1 \\) is between which range? <span class='translation'>(Hasil dari 99 + 1 berada di antara rentang)</span>", min: 90, max: 110, answer: 100, explanation: "99 plus 1 equals exactly 100. <span class='translation'>99 ditambah 1 sama persis dengan 100.</span>" },
+      { type: "theory", title: "Combo 10 (Close Friends of Numbers)", body: `<p>Before becoming a professional number detective, you must know who every number's "close friend" is. The number 98 is very close to 100. If you have 98 candies and your friend gives you 2 more, you instantly have 100 candies (one full bag)!</p><p>This trick of turning numbers into round numbers like 10, 100, or 1000 is the foundation of fast calculation. Numbers ending in 8 or 9 always want to "touch" the round number above them.</p><p class="translation">Sebelum jadi detektif angka profesional, kamu harus tahu siapa "teman dekat" setiap angka. Angka 98 itu sangat dekat dengan 100. Trik menjadikan angka ke angka bulat seperti 10, 100, atau 1000 ini adalah fondasi dari hitung cepat. Angka yang berakhiran 8 atau 9 selalu ingin "menyentuh" angka bulat di atasnya.</p>` },
+      { type: "checkbox", prompt: "Select 2 numbers that are close friends with 100 (need a little addition to become 100)! <span class='translation'>(Pilih 2 angka yang teman dekatnya 100)</span>", options: ["98 <span class='translation'>(butuh 2 lagi)</span>", "89 <span class='translation'>(butuh 11 lagi)</span>", "99 <span class='translation'>(butuh 1 lagi)</span>", "88 <span class='translation'>(butuh 12 lagi)</span>"], answers: [0, 2], explanation: "98 needs 2 to become 100. 99 needs 1 to become 100. <span class='translation'>98 butuh ditambah 2 untuk jadi 100. 99 butuh ditambah 1 untuk jadi 100.</span>" },
+      { type: "pairing", prompt: "Match the numbers with their closest round friends! <span class='translation'>(Cocokkan angka dengan teman dekat bulatnya)</span>", pairs: [{ left: "98", right: "100" }, { left: "8", right: "10" }, { left: "195", right: "200" }] },
+      { type: "typing", prompt: "How many more candies does 85 need to become 100? <span class='translation'>(85 butir permen butuh berapa tambahan lagi agar menjadi 100?)</span>", answer: "15", explanation: "100 - 85 = 15. <span class='translation'>100 - 85 = 15.</span>" },
+      { type: "drag_drop", prompt: "Arrange the thinking steps to make 98 + 2 easy! <span class='translation'>(Susun langkah berpikirnya agar 98 + 2 mudah dihitung)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["See that 98 needs 2 more to be 100 <span class='translation'>(Lihat bahwa 98 butuh 2 lagi untuk jadi 100)</span>", "Add 98 + 2 <span class='translation'>(Jumlahkan 98 + 2)</span>", "The result is exactly 100 <span class='translation'>(Hasilnya genap menjadi 100)</span>"], answer: "0,1,2", explanation: "Find what's missing to reach 100, then add. <span class='translation'>Cari apa yang kurang untuk mencapai 100, lalu tambahkan.</span>" },
+    ]
+  },
+  // ===== SECTION 2: INTRO & REAL-WORLD CONNECTION =====
+  {
+    id: 1,
+    steps: [
+      { type: "theory", title: "Savings Patterns in the Real World", body: `<p>Let's imagine we are saving money to buy a new school bag. In the first week you save Rp10.000, the second week Rp15.000, the third week Rp20.000. Can you see the pattern? Every week, your savings increase by Rp5.000!</p><p>With this pattern, you can predict that in the 4th week you will have Rp25.000. Math helps us plan for the future without having to guess!</p><p class="translation">Mari kita bayangkan sedang menabung untuk membeli tas sekolah baru. Minggu pertama kamu menyimpan Rp10.000, minggu kedua Rp15.000, minggu ketiga Rp20.000. Setiap minggu, tabunganmu bertambah Rp5.000! Dengan pola ini, kamu bisa memprediksi bahwa di minggu ke-4 kamu akan punya Rp25.000.</p>` },
+      { type: "typing", prompt: "Week 1 = 10,000, Week 2 = 15,000, Week 3 = 20,000. Type the savings for Week 4! <span class='translation'>(Ketik tabungan minggu ke-4)</span>", answer: "25000", explanation: "The pattern adds 5,000 each time. So, 20,000 + 5,000 = 25,000. <span class='translation'>Pola ini menambah 5.000 setiap kali. Jadi, 20.000 + 5.000 = 25.000.</span>" },
+      { type: "multiple_choice", prompt: "If your savings pattern increases by Rp5.000 each week, what are your savings in week 5? (Starting from 10,000) <span class='translation'>(Berapa tabungan di minggu ke-5?)</span>", options: ["25,000", "30,000", "35,000", "40,000"], answer: 1, explanation: "Week 4 is 25,000. Week 5 is 25,000 + 5,000 = 30,000. <span class='translation'>Minggu 4 adalah 25.000. Minggu 5 adalah 25.000 + 5.000 = 30.000.</span>" },
+      { type: "dropdown", prompt: "Savings pattern: <span class='translation'>(Pola tabungan)</span>", sentence: "10,000, 15,000, 20,000 has a constant difference of [drop] <span class='translation'>(memiliki selisih tetap sebesar)</span>", options: ["+2,500", "+5,000", "+10,000"], answer: "+5,000", explanation: "15,000 - 10,000 = 5,000. The difference is 5,000. <span class='translation'>15.000 - 10.000 = 5.000. Selisihnya adalah 5.000.</span>" },
+      { type: "theory", title: "The Concept of Rounding to Make Life Easier", body: `<p>In a store, item prices rarely end in zero. Imagine calculating Rp198.000 + Rp45.000 by stacking it in your head. Dizzy, right? This is where the <b>Concept of Rounding</b> comes in.</p><p>Instead of getting dizzy, let's just assume Rp198.000 is "almost Rp200.000". Math isn't about making things hard, it's about finding shortcuts to make life easier and more efficient.</p><p class="translation">Di toko, harga barang jarang berakhir dengan angka nol. Bayangkan menghitung Rp198.000 + Rp45.000 secara susun di kepala. Pusing, kan? Di sinilah Konsep Membulatkan bekerja. Daripada pusing, kita anggap saja Rp198.000 itu "hampir Rp200.000".</p>` },
+      { type: "checkbox", prompt: "Select 2 numbers that make sense to be rounded to 100! <span class='translation'>(Pilih 2 angka yang paling masuk akal untuk dibulatkan menjadi 100)</span>", options: ["98 <span class='translation'>(cukup dekat)</span>", "89 <span class='translation'>(terlalu jauh)</span>", "99 <span class='translation'>(cukup dekat)</span>", "88 <span class='translation'>(terlalu jauh)</span>"], answers: [0, 2], explanation: "98 and 99 are only 2 and 1 steps away from 100, making them very easy to round. <span class='translation'>98 dan 99 hanya berjarak 2 dan 1 langkah dari 100, sehingga sangat mudah dibulatkan.</span>" },
+      { type: "pairing", prompt: "Match the original numbers with their closest round numbers! <span class='translation'>(Cocokkan angka asli dengan angka bulat terdekatnya)</span>", pairs: [{ left: "198", right: "200" }, { left: "890", right: "900" }, { left: "45", right: "50" }] },
+      { type: "range", prompt: "If 198 is rounded to the nearest hundreds, it will be in the range... <span class='translation'>(Angka 198 jika dibulatkan ke ratusan terdekat akan berada di rentang)</span>", min: 190, max: 200, answer: 200, explanation: "198 is closer to 200 than 100. So it rounds up to 200. <span class='translation'>198 lebih dekat ke 200 daripada 100. Jadi dibulatkan menjadi 200.</span>" },
+      { type: "theory", title: "The Combo 10/100 Trick", body: `<p>If we have rounded the difficult number, we must remember one golden rule: "What is borrowed must be returned!". For example, we want to calculate \\( 198 + 45 \\).</p><p>We change 198 to 200 (meaning we "borrowed" 2). Then calculate \\( 200 + 45 = 245 \\). Because we borrowed 2 earlier, we must return it now: \\( 245 - 2 = 243 \\). This is the basis of the <b>Combo 10/100 Trick</b> that will turn you into a human calculator!</p><p class="translation">Jika kita sudah membulatkan angka yang sulit, kita harus ingat satu aturan emas: "Yang dipinjam harus dikembalikan!". Misalnya, kita ingin menghitung 198 + 45. Kita ubah 198 jadi 200 (berarti kita "meminjam" 2). Lalu hitung 200 + 45 = 245. Karena tadi kita meminjam 2, sekarang harus kita kembalikan: 245 - 2 = 243.</p>` },
+      { type: "typing", prompt: "Calculate using the combo trick: \\( 200 + 45 - 2 = \\dots \\) <span class='translation'>(Hitung menggunakan trik kombo)</span>", answer: "243", explanation: "200 + 45 is 245. Then return the 2 we borrowed: 245 - 2 = 243. <span class='translation'>200 + 45 adalah 245. Lalu kembalikan 2 yang kita pinjam: 245 - 2 = 243.</span>" },
+      { type: "drag_drop", prompt: "Arrange the steps of the Combo 100 Trick to calculate 198 + 45! <span class='translation'>(Susun langkah Trik Kombo 100 untuk menghitung 198 + 45)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Round 198 to 200 <span class='translation'>(Bulatkan 198 menjadi 200)</span>", "Calculate 200 + 45 = 245 <span class='translation'>(Hitung 200 + 45 = 245)</span>", "Return the borrowed 2: 245 - 2 = 243 <span class='translation'>(Kembalikan pinjaman 2: 245 - 2 = 243)</span>"], answer: "0,1,2", explanation: "Always round first, calculate, then return the difference. <span class='translation'>Selalu bulatkan dulu, hitung, lalu kembalikan selisihnya.</span>" },
+      { type: "multiple_choice", prompt: "Which equation is correct to calculate \\( 298 + 10 \\)? <span class='translation'>(Manakah persamaan yang benar untuk menghitung 298 + 10?)</span>", options: ["\\( 300 + 10 + 2 = 312 \\)", "\\( 300 + 10 - 2 = 308 \\)", "\\( 300 - 10 - 2 = 288 \\)", "\\( 300 + 10 = 310 \\)"], answer: 1, explanation: "298 is rounded to 300 (borrowed 2). So it becomes 300 + 10 - 2 = 308. <span class='translation'>298 dibulatkan jadi 200 (dipinjam 2). Jadi menjadi 300 + 10 - 2 = 308.</span>" },
+      { type: "typing", prompt: "Use the combo trick to calculate: \\( 395 + 10 = \\dots \\) <span class='translation'>(Gunakan trik kombo untuk menghitung)</span>", answer: "405", explanation: "395 is rounded to 400 (borrowed 5). So it becomes 400 + 10 - 5 = 405. <span class='translation'>395 dibulatkan jadi 400 (dipinjam 5). Jadi menjadi 400 + 10 - 5 = 405.</span>" }
+    ]
+  },
+  // ===== SECTION 3: PROBLEM INTRODUCTION =====
+  {
+    id: 2,
+    steps: [
+      { type: "theory", title: "Dissecting a Word Problem", body: `<p>Let's enter the first mystery: "You are reading a 198-page book. On the first day, you read 45 pages. How many pages are left unread?"</p><p>Word problems sometimes confuse us in choosing the operation. If asked for "what's left", that means it's a <b>Subtraction</b> operation! The problem is: \\( 198 - 45 \\). Looks hard? Don't worry, there's a trick!</p><p class="translation">Mari kita masuki misteri pertama: "Kamu sedang membaca buku setebal 198 halaman. Hari pertama kamu membaca 45 halaman. Berapa sisa halaman yang belum dibaca?" Soal cerita kadang membuat kita bingung memilih operasi. Kalau ditanya "sisa", itu artinya operasi Pengurangan! Soalnya: 198 - 45.</p>` },
+      { type: "multiple_choice", prompt: "Question: '198-page book, 45 read. How many left?' The correct math operation is... <span class='translation'>(Operasi matematika yang tepat adalah)</span>", options: ["\\( 198 + 45 \\)", "\\( 198 - 45 \\)", "\\( 198 \\times 45 \\)", "\\( 45 - 198 \\)"], answer: 1, explanation: "Asking for 'left' means subtraction. <span class='translation'>Menanyakan 'sisa' berarti pengurangan.</span>" },
+      { type: "dropdown", prompt: "To calculate 198 - 45, we change 198 into... <span class='translation'>(Untuk menghitung 198 - 45, kita ubah 198 menjadi)</span>", sentence: "198 is changed to [drop] <span class='translation'>(diubah menjadi)</span>", options: ["100", "200", "190"], answer: "200", explanation: "198 is close to 200. Rounding makes it easier. <span class='translation'>198 dekat dengan 200. Membulatkan membuatnya lebih mudah.</span>" },
+      { type: "typing", prompt: "After rounding 198 to 200, calculate \\( 200 - 45 = \\dots \\) <span class='translation'>(Setelah membulatkan 198 menjadi 200, hitunglah)</span>", answer: "155", explanation: "200 - 45 = 155. <span class='translation'>200 - 45 = 155.</span>" },
+      { type: "theory", title: "The Combo Trick for Subtraction", body: `<p>For the problem \\( 198 - 45 \\), we use the same trick as addition. Round 198 to 200. Since we changed 198 to 200 (meaning we added 2 at the beginning), at the end we must subtract 2 to keep it balanced.</p><p>The form becomes: \\( (200 - 45) - 2 \\). Calculating \\( 200 - 45 \\) is easier because 200 is a round number. The result is 155. Then subtract 2, it becomes 153. Very easy, right?</p><p class="translation">Untuk soal 198 - 45, kita pakai trik yang sama seperti penjumlahan. Bulatkan 198 menjadi 200. Karena kita mengubah 198 ke 200 (artinya kita menambah 2 di awal), maka di akhir kita harus mengurangi 2 agar seimbang. Bentuknya jadi: (200 - 45) - 2. Hasilnya 155. Lalu kurangi 2, jadi 153.</p>` },
+      { type: "dropdown", prompt: "After getting the result 200 - 45 = 155, the final step to balance it is... <span class='translation'>(Setelah mendapat hasil 200 - 45 = 155, langkah terakhir agar seimbang adalah)</span>", sentence: "155 [drop] <span class='translation'>(langkah terakhir)</span>", options: ["+ 2", "- 2", "x 2"], answer: "- 2", explanation: "We added 2 earlier to round it up, so we must subtract 2 at the end. <span class='translation'>Kita menambah 2 tadi untuk membulatkan, jadi kita harus mengurangi 2 di akhir.</span>" },
+      { type: "typing", prompt: "The final result of \\( 198 - 45 \\) is... <span class='translation'>(Hasil akhir dari 198 - 45 adalah)</span>", answer: "153", explanation: "(200 - 45) - 2 = 155 - 2 = 153. <span class='translation'>(200 - 45) - 2 = 155 - 2 = 153.</span>" },
+      { type: "range", prompt: "The final result of 198 - 45 is between the range... <span class='translation'>(Hasil akhir dari 198 - 45 berada di antara rentang)</span>", min: 140, max: 160, answer: 153, explanation: "The exact answer is 153, which falls between 140 and 160. <span class='translation'>Jawaban tepatnya adalah 153, yang berada di antara 140 dan 160.</span>" },
+      { type: "theory", title: "Visualizing the Number Line", body: `<p>Sometimes, our brain understands visual things more easily. Imagine a number line. Start at 198. You need to jump backward by 45.</p><p>Instead of jumping one by one, imagine 198 moves forward a bit to 200. Then from 200, jump backward 45 to land on 155. Finally, because you "moved forward" 2 steps earlier, you must step back 2 more: \\( 155 - 2 = 153 \\).</p><p class="translation">Terkadang, otak kita lebih mudah memahami sesuatu yang visual. Bayangkan sebuah garis bilangan. Mulai dari angka 198. Kamu perlu melompat mundur sejauh 45. Daripada melompat satu-satu, bayangkan 198 maju sedikit ke 200. Lalu dari 200, lompat mundur 45 sampai ke 155. Terakhir, karena tadi kamu "maju" 2 langkah, kamu harus kembali 2 langkah lagi: 155 - 2 = 153.</p>` },
+      { type: "checkbox", prompt: "Select 2 math equations that are CORRECT to solve 198 - 45! <span class='translation'>(Pilih 2 persamaan matematika yang BENAR untuk menyelesaikan 198 - 45)</span>", options: ["\\( 200 - 45 - 2 \\)", "\\( (200 - 45) - 2 \\)", "\\( 200 - 45 + 2 \\)", "\\( 200 + 45 - 2 \\)"], answers: [0, 1], explanation: "We add 2 to round it to 200, so we must subtract 2 at the end. <span class='translation'>Kita menambah 2 untuk membulatkan jadi 200, jadi kita harus mengurangi 2 di akhir.</span>" },
+      { type: "pairing", prompt: "Match the calculation steps with their results! <span class='translation'>(Cocokkan langkah perhitungan dengan hasilnya)</span>", pairs: [{ left: "Step 1 (Round)", right: "198 becomes 200" }, { left: "Step 2 (Calc Round)", right: "200 - 45 = 155" }, { left: "Step 3 (Return)", right: "155 - 2 = 153" }] },
+      { type: "multiple_choice", prompt: "If you have a 295-page book and read 20 pages, the quick trick is... <span class='translation'>(Jika kamu punya 295 halaman buku dan membaca 20 halaman, trik cepatnya adalah)</span>", options: ["\\( 300 - 20 + 5 \\)", "\\( 300 - 20 - 5 \\)", "\\( 300 + 20 - 5 \\)", "\\( 300 - 20 \\)"], answer: 1, explanation: "295 is rounded to 300 (added 5). So it becomes 300 - 20 - 5 = 275. <span class='translation'>295 dibulatkan jadi 300 (ditambah 5). Jadi menjadi 300 - 20 - 5 = 275.</span>" },
+      { type: "drag_drop", prompt: "Arrange the visual number line steps for 198 - 45! <span class='translation'>(Susun langkah visual garis bilangan untuk 198 - 45)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Move forward 2 steps from 198 to 200 <span class='translation'>(Maju 2 langkah dari 198 ke 200)</span>", "Jump backward 45 steps from 200 to 155 <span class='translation'>(Lompat mundur 45 langkah dari 200 ke 155)</span>", "Step back 2 steps from 155 to 153 <span class='translation'>(Kembali mundur 2 langkah dari 155 ke 153)</span>"], answer: "0,1,2", explanation: "Move forward to round, subtract, then move back to return the difference. <span class='translation'>Maju untuk membulatkan, kurangi, lalu mundur untuk mengembalikan selisihnya.</span>" }
+    ]
+  },
+    // ===== SECTION 4: GUIDED PRACTICE =====
+  {
+    id: 3,
+    steps: [
+      { type: "theory", title: "Patterns on the Digital Whiteboard", body: `<p>Let's practice together! Look at this sequence of numbers: \\( 10, 22, 34, 46, \\dots \\) What is the jump distance? That's right, +12 at each step. This pattern rises consistently.</p><p>To find the 5th number, we just need to add \\( 46 + 12 \\). Once the pattern is known, long sequences of numbers will never be scary again!</p><p class="translation">Saatnya berlatih bersama! Coba lihat deretan angka ini: 10, 22, 34, 46... Apa jarak lompatannya? Benar, +12 setiap langkahnya. Untuk menemukan angka ke-5, kita hanya perlu menjumlahkan 46 + 12.</p>` },
+      { type: "typing", prompt: "Continue this pattern: \\( 10, 22, 34, 46, \\dots \\) <span class='translation'>(Lanjutkan pola berikut)</span>", answer: "58", explanation: "The pattern adds 12 each time. 46 + 12 = 58. <span class='translation'>Pola ini menambah 12 setiap kali. 46 + 12 = 58.</span>" },
+      { type: "multiple_choice", prompt: "The 5th number in the pattern \\( 120, 145, 170, \\dots \\) is... <span class='translation'>(Angka ke-5 dari pola tersebut adalah)</span>", options: ["185", "190", "195", "200"], answer: 2, explanation: "The pattern adds 25 each time. 170 + 25 = 195. <span class='translation'>Pola ini menambah 25 setiap kali. 170 + 25 = 195.</span>" },
+      { type: "dropdown", prompt: "Pattern: <span class='translation'>(Pola)</span>", sentence: "10, 22, 34, 46 has a jump rule of [drop] <span class='translation'>(memiliki aturan lompatan)</span>", options: ["+10", "+12", "+14"], answer: "+12", explanation: "22 - 10 = 12. The jump is 12. <span class='translation'>22 - 10 = 12. Lompatannya adalah 12.</span>" },
+      { type: "theory", title: "The Close Friend Trick for 99", body: `<p>Now let's catch the naughty number: \\( 247 + 99 \\). If calculated by stacking, it takes a long time. But remember, who is 99's close friend? Of course, 100!</p><p>We change 99 to \\( (100 - 1) \\). So the calculation becomes \\( 247 + 100 - 1 \\). The result is \\( 347 - 1 = 346 \\). It only takes 3 seconds in your head!</p><p class="translation">Sekarang mari kita tangkap angka nakal: 247 + 99. Kalau dihitung susun, butuh waktu lama. Tapi ingat, siapa teman dekat 99? Tentu saja 100! Kita ubah 99 menjadi (100 - 1). Jadi hitungannya menjadi 247 + 100 - 1. Hasilnya 347 - 1 = 346.</p>` },
+      { type: "typing", prompt: "Change the number 99 using the close friend trick to 100 - ... <span class='translation'>(Ubah angka 99 menggunakan trik teman dekat menjadi 100 - ...)</span>", answer: "1", explanation: "100 - 1 = 99. <span class='translation'>100 - 1 = 99.</span>" },
+      { type: "typing", prompt: "Calculate quickly: \\( 247 + 100 = \\dots \\) <span class='translation'>(Hitung cepat)</span>", answer: "347", explanation: "247 + 100 = 347. <span class='translation'>247 + 100 = 347.</span>" },
+      { type: "checkbox", prompt: "Select 2 correct equations to calculate 247 + 99! <span class='translation'>(Pilih 2 persamaan yang benar untuk menghitung 247 + 99)</span>", options: ["\\( 247 + 100 - 1 \\)", "\\( (247 + 100) - 1 \\)", "\\( 247 + 100 + 1 \\)", "\\( 247 + 200 - 1 \\)"], answers: [0, 1], explanation: "99 is changed to (100 - 1). So 247 + 99 equals 247 + 100 - 1. <span class='translation'>99 diubah menjadi (100 - 1). Maka 247 + 99 sama dengan 247 + 100 - 1.</span>" },
+      { type: "theory", title: "Combining Subtraction Jumps", body: `<p>Sometimes we find problems like \\( 500 - 45 - 45 \\). Instead of subtracting twice separately, we can see that the backward jumps are the same. \\( 45 + 45 = 90 \\).</p><p>So, we just need to subtract 500 by 90 all at once! \\( 500 - 90 = 410 \\). This combining trick is very useful when you are calculating remaining stock sold multiple times with the same amount.</p><p class="translation">Terkadang kita menemui soal seperti 500 - 45 - 45. Daripada mengurangkan dua kali secara terpisah, kita bisa melihat bahwa lompatan mundurnya sama. 45 + 45 = 90. Jadi, kita cukup mengurangkan 500 dengan 90 sekaligus! 500 - 90 = 410.</p>` },
+      { type: "range", prompt: "Combine these jumps: \\( 45 + 45 = \\dots \\) <span class='translation'>(Gabungkan lompatan ini)</span>", min: 80, max: 100, answer: 90, explanation: "40 + 40 = 80. 5 + 5 = 10. 80 + 10 = 90. <span class='translation'>40 + 40 = 80. 5 + 5 = 10. 80 + 10 = 90.</span>" },
+      { type: "typing", prompt: "Calculate quickly by combining: \\( 500 - 90 = \\dots \\) <span class='translation'>(Hitung cepat dengan menggabungkan)</span>", answer: "410", explanation: "500 - 90 = 410. <span class='translation'>500 - 90 = 410.</span>" },
+      { type: "pairing", prompt: "Match the problems with their quick methods! <span class='translation'>(Cocokkan soal dengan cara cepatnya)</span>", pairs: [{ left: "247 + 99", right: "247 + 100 - 1" }, { left: "500 - 45 - 45", right: "500 - (45 + 45)" }, { left: "198 + 45", right: "200 + 45 - 2" }] },
+      { type: "drag_drop", prompt: "Arrange the steps to calculate 500 - 45 - 45! <span class='translation'>(Susun langkah menghitung 500 - 45 - 45)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Combine the subtrahends: 45 + 45 = 90 <span class='translation'>(Gabungkan pengurang: 45 + 45 = 90)</span>", "Subtract from the initial number: 500 - 90 <span class='translation'>(Kurangkan dari angka awal: 500 - 90)</span>", "Final result: 410 <span class='translation'>(Hasil akhir: 410)</span>"], answer: "0,1,2", explanation: "Combine subtrahends first if they make a round number. <span class='translation'>Gabungkan angka pengurang dahulu jika membentuk angka bulat.</span>" }
+    ]
+  },
+  // ===== SECTION 5: INDEPENDENT PRACTICE =====
+  {
+    id: 4,
+    steps: [
+      { type: "theory", title: "Descending Pattern Mission", body: `<p>Now it's time for a "Solo Mission"! Look at this pattern: \\( 200, 185, 170, \\dots \\) This pattern goes down. What is the jump distance? 200 to 185 is -15. 185 to 170 is also -15.</p><p>So, to find the next two numbers, you just need to keep subtracting 15. Remember, use your detective instincts!</p><p class="translation">Sekarang waktunya "Solo Mission"! Coba lihat pola ini: 200, 185, 170... Pola ini turun. Berapa jarak lompatannya? 200 ke 185 adalah -15. Jadi, untuk menemukan dua angka berikutnya, kamu hanya perlu terus mengurangkan 15.</p>` },
+      { type: "typing", prompt: "Continue this descending pattern: \\( 200, 185, 170, \\dots \\) <span class='translation'>(Lanjutkan pola turun ini)</span>", answer: "155", explanation: "170 - 15 = 155. <span class='translation'>170 - 15 = 155.</span>" },
+      { type: "typing", prompt: "Continue the pattern to the 5th number! (200, 185, 170, ..., ...) <span class='translation'>(Lanjutkan pola tadi ke angka ke-5)</span>", answer: "140", explanation: "155 - 15 = 140. <span class='translation'>155 - 15 = 140.</span>" },
+      { type: "dropdown", prompt: "Pattern: <span class='translation'>(Pola)</span>", sentence: "200, 185, 170 has a constant difference of [drop] <span class='translation'>(memiliki selisih tetap sebesar)</span>", options: ["-10", "-15", "-20"], answer: "-15", explanation: "200 - 185 = 15. The difference is -15. <span class='translation'>200 - 185 = 15. Selisihnya adalah -15.</span>" },
+      { type: "theory", title: "Fast Calculation Mission with 199", body: `<p>Next problem: Calculate quickly \\( 356 + 199 \\). No calculators or long stacking allowed! Remember the close friend trick.</p><p>199 is very close to 200. Change 199 to \\( 200 - 1 \\). Calculate \\( 356 + 200 \\) first, then subtract 1 at the end. Can you find the answer in 5 seconds?</p><p class="translation">Soal berikutnya: Hitung cepat 356 + 199. Dilarang menggunakan kalkulator atau cara susun panjang! Ingat trik teman dekat. 199 itu sangat dekat dengan 200. Ubah 199 menjadi 200 - 1. Hitung 356 + 200 terlebih dahulu, lalu kurangi 1 di akhir.</p>` },
+      { type: "multiple_choice", prompt: "Calculate 356 + 199 quickly using the combo trick! <span class='translation'>(Hitung cepat menggunakan trik kombo)</span>", options: ["555", "556", "545", "554"], answer: 0, explanation: "356 + 200 = 556. 556 - 1 = 555. <span class='translation'>356 + 200 = 556. 556 - 1 = 555.</span>" },
+      { type: "pairing", prompt: "Match the problems with their correct combo tricks! <span class='translation'>(Cocokkan soal dengan trik kombo yang tepat)</span>", pairs: [{ left: "356 + 199", right: "356 + 200 - 1" }, { left: "450 + 198", right: "450 + 200 - 2" }, { left: "125 + 99", right: "125 + 100 - 1" }] },
+      { type: "typing", prompt: "Combo trick: \\( 125 + 100 - 1 = \\dots \\) <span class='translation'>(Trik kombo)</span>", answer: "224", explanation: "125 + 100 = 225. 225 - 1 = 224. <span class='translation'>125 + 100 = 225. 225 - 1 = 224.</span>" },
+      { type: "theory", title: "Milk Store Word Problem Mission", body: `<p>Here is the final challenge: "A store has 500 bottles of milk. 98 were sold in the morning and 102 in the afternoon. How many are left?"</p><p>This problem looks complicated because there are two subtractions. But look closely at the numbers 98 and 102. If combined, they form a nice round number! \\( 98 + 102 = 200 \\). So, you just need to calculate \\( 500 - 200 \\). Awesome, right?</p><p class="translation">Inilah tantangan terakhir: "Sebuah toko punya 500 botol susu. Terjual 98 di pagi hari dan 102 di sore hari. Berapa sisanya?" Soal ini terlihat rumit karena ada dua pengurangan. Tapi lihat baik-baik angka 98 dan 102. Kalau digabung, mereka membentuk angka bulat yang cantik! 98 + 102 = 200. Jadi, kamu hanya perlu menghitung 500 - 200.</p>` },
+      { type: "range", prompt: "In the milk store problem (500 bottles), if combined, 98 + 102 = ... <span class='translation'>(Jika digabung, terjual)</span>", min: 180, max: 220, answer: 200, explanation: "98 + 102 = 200. <span class='translation'>98 + 102 = 200.</span>" },
+      { type: "typing", prompt: "Calculate the remaining milk in the store: \\( 500 - 200 = \\dots \\) <span class='translation'>(Hitung sisa susu di toko tersebut)</span>", answer: "300", explanation: "500 - 200 = 300. <span class='translation'>500 - 200 = 300.</span>" },
+      { type: "multiple_choice", prompt: "Why is the problem 500 - 98 - 102 so easy to calculate quickly? <span class='translation'>(Mengapa soal tersebut sangat mudah dihitung cepat?)</span>", options: ["Because 98 and 102 are even", "Because 98 + 102 = 200 (a round number)", "Because 500 is a big number", "Because 98 and 102 can be divided by 2"], answer: 1, explanation: "Combining them makes 200, which is very easy to subtract from 500. <span class='translation'>Menggabungkannya menghasilkan 200, yang sangat mudah dikurangkan dari 500.</span>" },
+      { type: "drag_drop", prompt: "Arrange the logic to solve the milk store problem! <span class='translation'>(Susun logika menyelesaikan soal toko susu)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Combine sold milk: 98 + 102 = 200 <span class='translation'>(Gabungkan susu terjual: 98 + 102 = 200)</span>", "Subtract initial stock by total sold: 500 - 200 <span class='translation'>(Kurangi stok awal dengan total terjual: 500 - 200)</span>", "Final remaining milk: 300 <span class='translation'>(Sisa susu akhir: 300)</span>"], answer: "0,1,2", explanation: "Combine subtrahends first if they make a round number. <span class='translation'>Gabungkan angka pengurang dahulu jika membentuk angka bulat.</span>" }
+    ]
+  },
+  // ===== SECTION 6: CONSOLIDATION & REFLECTION =====
+  {
+    id: 5,
+    steps: [
+      { type: "theory", title: "Summarizing Number Patterns", body: `<p>Today you have become an amazing number detective! We learned that number patterns can go up (addition) or down (subtraction).</p><p>The main key to reading patterns is always finding the jump distance (difference) between two adjacent numbers. As long as the jump is constant, you can guess the number at any position without having to write them all down!</p><p class="translation">Hari ini kamu sudah menjadi detektif angka yang luar biasa! Kita belajar bahwa pola bilangan bisa naik (penjumlahan) atau turun (pengurangan). Kunci utama untuk membaca pola adalah selalu mencari jarak lompatan (selisih) antara dua angka yang berdekatan.</p>` },
+      { type: "multiple_choice", prompt: "The main key to finding the next number in a pattern is... <span class='translation'>(Kunci utama untuk menemukan angka selanjutnya dalam pola bilangan adalah)</span>", options: ["Adding all numbers together", "Finding the difference (jump distance) between numbers", "Multiplying the first and last number", "Guessing randomly"], answer: 1, explanation: "The constant difference tells you what to add or subtract. <span class='translation'>Selisih yang tetap memberitahumu apa yang harus ditambah atau dikurangkan.</span>" },
+      { type: "typing", prompt: "If a pattern has a jump distance of +20, and the current number is 50, write the next number! <span class='translation'>(Jika jarak lompatan +20, tulis angka berikutnya)</span>", answer: "70", explanation: "50 + 20 = 70. <span class='translation'>50 + 20 = 70.</span>" },
+      { type: "checkbox", prompt: "Select 2 characteristics of an arithmetic pattern! <span class='translation'>(Pilih 2 ciri-ciri pola bilangan aritmatika)</span>", options: ["The difference between numbers is always constant <span class='translation'>(Selisih antar angka selalu tetap)</span>", "The jump can change at every number <span class='translation'>(Lompatan bisa berubah setiap angka)</span>", "It can rise consistently <span class='translation'>(Bisa naik secara konsisten)</span>", "The numbers always start from zero <span class='translation'>(Angkanya selalu dimulai dari nol)</span>"], answers: [0, 2], explanation: "Arithmetic patterns have a constant difference and can go up or down. <span class='translation'>Pola aritmatika memiliki selisih yang tetap dan bisa naik atau turun.</span>" },
+      { type: "theory", title: "Summarizing the Combo 10/100 Trick", body: `<p>Besides being a detective, you also became a human calculator thanks to the <b>Combo 10/100 Trick</b>. For numbers ending in 8 or 9 (like 98, 198, 299), we always round up (to 100, 200, 300) to make them easy to calculate.</p><p>But remember the golden rule: "What is borrowed must be returned!" If we add a number at the beginning to round it, we must subtract it at the end, and vice versa.</p><p class="translation">Selain jadi detektif, kamu juga jadi manusia kalkulator berkat Trik Kombo 10/100. Untuk angka yang berakhir dengan 8 atau 9, kita selalu bulatkan ke atas agar mudah dihitung. Tapi ingat aturan emasnya: "Pinjam harus kembali!"</p>` },
+      { type: "dropdown", prompt: "To calculate 299 + 50, the number 299 should be rounded to... <span class='translation'>(Angka 299 sebaiknya dibulatkan menjadi)</span>", sentence: "299 is rounded to [drop] <span class='translation'>(dibulatkan menjadi)</span>", options: ["200", "300", "100"], answer: "300", explanation: "299 is very close to 300. <span class='translation'>299 sangat dekat dengan 300.</span>" },
+      { type: "typing", prompt: "Combo trick: \\( 300 + 50 - \\dots = 349 \\) <span class='translation'>(Trik kombo)</span>", answer: "1", explanation: "299 was rounded to 300 (added 1). So we must subtract 1 at the end. <span class='translation'>299 dibulatkan jadi 300 (ditambah 1). Jadi kita harus mengurangi 1 di akhir.</span>" },
+      { type: "pairing", prompt: "Match the original numbers with their rounding methods! <span class='translation'>(Cocokkan angka asli dengan cara pembulatannya)</span>", pairs: [{ left: "198 + 10", right: "200 + 10 - 2" }, { left: "299 + 50", right: "300 + 50 - 1" }, { left: "99 + 5", right: "100 + 5 - 1" }] },
+      { type: "theory", title: "Summarizing Combining Numbers & Visualization", body: `<p>The last mystery we solved was word problems with many numbers. Instead of calculating one by one which is prone to errors, we use the visual logic of the number line.</p><p>If there are consecutive subtractions, combine the subtrahends first. Example: double discounts or staged sales. Math isn't about long calculations, it's about finding smart shortcuts!</p><p class="translation">Misteri terakhir yang kita pecahkan adalah soal cerita dengan banyak angka. Daripada menghitung satu per satu yang rawan salah, kita gunakan logika visual garis bilangan. Jika ada pengurangan berurutan, gabungkan dulu angka pengurangnya.</p>` },
+      { type: "multiple_choice", prompt: "Word problem: 'Price is Rp1.000, cut by Rp150, then cut by Rp250.' The most efficient way is... <span class='translation'>(Cara paling efisien adalah)</span>", options: ["1000 - 150, then subtract 250", "1000 - (150 + 250)", "1000 + 150 - 250", "1000 - 150 + 250"], answer: 1, explanation: "Combine the cuts first: 150 + 250 = 400. Then subtract from 1000. <span class='translation'>Gabungkan potongan dahulu: 150 + 250 = 400. Lalu kurangkan dari 1000.</span>" },
+      { type: "typing", prompt: "Use the combine trick: \\( 150 + 250 = \\dots \\) <span class='translation'>(Gunakan trik gabung)</span>", answer: "400", explanation: "100 + 200 = 300. 50 + 50 = 100. 300 + 100 = 400. <span class='translation'>100 + 200 = 300. 50 + 50 = 100. 300 + 100 = 400.</span>" },
+      { type: "range", prompt: "The final result of 1000 - (150 + 250) is in the range... <span class='translation'>(Hasil akhir berada di rentang)</span>", min: 500, max: 700, answer: 600, explanation: "1000 - 400 = 600. <span class='translation'>1000 - 400 = 600.</span>" },
+      { type: "drag_drop", prompt: "Arrange the steps to find the remaining price of an item discounted twice (1000 - 150 - 250)! <span class='translation'>(Susun langkah mencari sisa harga barang yang dipotong dua kali)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Combine discounts: 150 + 250 = 400 <span class='translation'>(Gabungkan diskon: 150 + 250 = 400)</span>", "Subtract from initial price: 1000 - 400 <span class='translation'>(Kurangkan dari harga awal: 1000 - 400)</span>", "Final remaining price: 600 <span class='translation'>(Sisa harga akhir: 600)</span>"], answer: "0,1,2", explanation: "Combine subtrahends first, then subtract. <span class='translation'>Gabungkan angka pengurang dahulu, lalu kurangkan.</span>" }
+    ]
+  },
+  // ===== 7.1 s/d 7.5: ASSESSMENT =====
+  {
+    id: 6,
+    steps: [
+      { type: "multiple_choice", prompt: "The pattern \\( 5, 8, 11, 14, \\dots \\) continues with... <span class='translation'>(Pola tersebut dilanjutkan dengan)</span>", options: ["16", "17", "18", "19"], answer: 1, explanation: "Adds 3 each time. 14 + 3 = 17. <span class='translation'>Menambah 3 setiap kali. 14 + 3 = 17.</span>" },
+      { type: "typing", prompt: "Find the next number: \\( 100, 90, 80, 70, \\dots \\) <span class='translation'>(Tentukan angka berikutnya)</span>", answer: "60", explanation: "Subtracts 10 each time. 70 - 10 = 60. <span class='translation'>Mengurangi 10 setiap kali. 70 - 10 = 60.</span>" },
+      { type: "dropdown", prompt: "Pattern: <span class='translation'>(Pola)</span>", sentence: "15, 27, 39, 51 has a constant difference of [drop] <span class='translation'>(memiliki selisih tetap sebesar)</span>", options: ["+10", "+12", "+15"], answer: "+12", explanation: "27 - 15 = 12. The difference is 12. <span class='translation'>27 - 15 = 12. Selisihnya 12.</span>" },
+      { type: "pairing", prompt: "Match the pattern with its difference! <span class='translation'>(Cocokkan pola dengan selisihnya)</span>", pairs: [{ left: "2, 4, 6, 8...", right: "+2" }, { left: "10, 20, 30, 40...", right: "+10" }, { left: "100, 95, 90, 85...", right: "-5" }] },
+      { type: "checkbox", prompt: "Select patterns that have a difference of +12! <span class='translation'>(Pilih pola yang memiliki selisih +12)</span>", options: ["15, 27, 39, 51", "10, 22, 34, 46", "5, 17, 29, 41", "20, 34, 48, 62 <span class='translation'>(Selisihnya 14)</span>"], answers: [0, 1, 2], explanation: "27-15=12, 22-10=12, 17-5=12. But 34-20=14. <span class='translation'>27-15=12, 22-10=12, 17-5=12. Tapi 34-20=14.</span>" },
+      { type: "typing", prompt: "Continue this pattern 1 number forward: \\( 120, 145, 170, \\dots \\) <span class='translation'>(Lanjutkan pola ini 1 angka ke depan)</span>", answer: "195", explanation: "Adds 25. 170 + 25 = 195. <span class='translation'>Menambah 25. 170 + 25 = 195.</span>" },
+      { type: "range", prompt: "Guess the 5th number from the pattern: 200, 185, 170, 155, ... <span class='translation'>(Tebak angka ke-5 dari pola tersebut)</span>", min: 130, max: 150, answer: 140, explanation: "155 - 15 = 140. <span class='translation'>155 - 15 = 140.</span>" },
+      { type: "multiple_choice", prompt: "The missing number from the pattern 1000, 950, ..., 850, 800 is... <span class='translation'>(Angka yang hilang dari pola tersebut adalah)</span>", options: ["875", "900", "925", "950"], answer: 1, explanation: "Subtracts 50. 950 - 50 = 900. <span class='translation'>Mengurangi 50. 950 - 50 = 900.</span>" },
+      { type: "drag_drop", prompt: "Arrange the logic to find the 5th number from the pattern 5.000, 8.500, 12.000, ... <span class='translation'>(Susun logika mencari angka ke-5)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Find difference: 8.500 - 5.000 = 3.500 <span class='translation'>(Cari selisih: 8.500 - 5.000 = 3.500)</span>", "Add difference to 3rd number: 12.000 + 3.500 = 15.500 <span class='translation'>(Tambahkan selisih ke angka ke-3: 12.000 + 3.500 = 15.500)</span>", "Add difference to 4th number: 15.500 + 3.500 = 19.000 <span class='translation'>(Tambahkan selisih ke angka ke-4: 15.500 + 3.500 = 19.000)</span>"], answer: "0,1,2", explanation: "Find constant difference, then keep adding. <span class='translation'>Cari selisih tetap, lalu terus tambahkan.</span>" },
+      { type: "typing", prompt: "A pattern is subtracted by 15 then added by 5. If the first number is 100, type the third number! <span class='translation'>(Jika angka pertama 100, ketik angka ketiganya)</span>", answer: "90", explanation: "1st: 100. 2nd: 100-15=85. 3rd: 85+5=90. <span class='translation'>Ke-1: 100. Ke-2: 100-15=85. Ke-3: 85+5=90.</span>" },
+	  { type: "print_form", group: "Assessment A" }
+    ]
+  },
+  {
+    id: 7,
+    steps: [
+      { type: "multiple_choice", prompt: "98 candies plus 2 candies equals... <span class='translation'>(98 butir permen ditambah 2 butir sama dengan)</span>", options: ["90", "100", "102", "96"], answer: 1, explanation: "98 + 2 = 100. <span class='translation'>98 + 2 = 100.</span>" },
+      { type: "dropdown", prompt: "To calculate 198 + 45, we change 198 into... <span class='translation'>(Untuk menghitung 198 + 45, kita ubah 198 menjadi)</span>", sentence: "198 is changed to [drop] <span class='translation'>(diubah menjadi)</span>", options: ["200", "190", "100"], answer: "200", explanation: "198 is close to 200. <span class='translation'>198 dekat dengan 200.</span>" },
+      { type: "typing", prompt: "245 - 2 = ... (Final result of 198 + 45) <span class='translation'>(Hasil akhir dari 198 + 45)</span>", answer: "243", explanation: "200 + 45 = 245. Return the 2: 245 - 2 = 243. <span class='translation'>200 + 45 = 245. Kembalikan 2: 245 - 2 = 243.</span>" },
+      { type: "checkbox", prompt: "Select correct equations for 125 + 99! <span class='translation'>(Pilih persamaan yang benar untuk 125 + 99)</span>", options: ["125 + 100 - 1", "125 + 100 + 1", "(125 + 100) - 1", "125 + 90 + 1"], answers: [0, 2], explanation: "99 is changed to (100 - 1). So it becomes 125 + 100 - 1. <span class='translation'>99 diubah menjadi (100 - 1). Jadi menjadi 125 + 100 - 1.</span>" },
+      { type: "range", prompt: "Calculate 356 + 199. Put the answer in the range 500 - 600. <span class='translation'>(Hitung 356 + 199. Masukkan jawaban di rentang 500 - 600)</span>", min: 500, max: 600, answer: 555, explanation: "356 + 200 = 556. 556 - 1 = 555. <span class='translation'>356 + 200 = 556. 556 - 1 = 555.</span>" },
+      { type: "typing", prompt: "Use rounding trick: 450 + 198 = ... <span class='translation'>(Gunakan trik pembulatan)</span>", answer: "648", explanation: "450 + 200 = 650. 650 - 2 = 648. <span class='translation'>450 + 200 = 650. 650 - 2 = 648.</span>" },
+      { type: "pairing", prompt: "Match the problem with its rounding trick! <span class='translation'>(Cocokkan soal dengan trik pembulatannya)</span>", pairs: [{ left: "247 + 99", right: "247 + 100 - 1" }, { left: "450 + 198", right: "450 + 200 - 2" }, { left: "125 + 99", right: "125 + 100 - 1" }] },
+      { type: "multiple_choice", prompt: "Mother bought 125 eggs, then bought 99 more. Total eggs are... <span class='translation'>(Ibu membeli 125 butir telur, lalu membeli lagi 99 butir. Total telur ibu adalah)</span>", options: ["224", "225", "223", "324"], answer: 0, explanation: "125 + 100 - 1 = 224. <span class='translation'>125 + 100 - 1 = 224.</span>" },
+      { type: "drag_drop", prompt: "Arrange steps to calculate 845 + 99! <span class='translation'>(Susun langkah menghitung 845 + 99)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Change 99 to 100 - 1 <span class='translation'>(Ubah 99 menjadi 100 - 1)</span>", "845 + 100 = 945 <span class='translation'>(845 + 100 = 945)</span>", "945 - 1 = 944 <span class='translation'>(945 - 1 = 944)</span>"], answer: "0,1,2", explanation: "Round up, add, then subtract the difference. <span class='translation'>Bulatkan ke atas, tambahkan, lalu kurangi selisihnya.</span>" },
+      { type: "typing", prompt: "Calculate quickly: 500 + 298 = ... <span class='translation'>(Hitung cepat)</span>", answer: "798", explanation: "500 + 300 - 2 = 798. <span class='translation'>500 + 300 - 2 = 798.</span>" },
+	  { type: "print_form", group: "Assessment B" }
+    ]
+  },
+  {
+    id: 8,
+    steps: [
+      { type: "multiple_choice", prompt: "\\( 1.250 - 199 - 298 \\) is calculated with the fastest trick becoming... <span class='translation'>(Dihitung dengan trik paling cepat menjadi)</span>", options: ["1.250 - 200 - 300", "1.250 - 200 + 1 - 300 + 2", "1.250 - 199 - 298 stacked", "1.250 - 200 - 1 - 300 - 2"], answer: 1, explanation: "199 is (200-1) and 298 is (300-2). So we subtract 200 and 300, but add back 1 and 2. <span class='translation'>199 adalah (200-1) dan 298 adalah (300-2). Jadi kita kurangi 200 dan 300, tapi kembalikan 1 dan 2.</span>" },
+      { type: "dropdown", prompt: "The result of 1.250 - 199 - 298 is... <span class='translation'>(Hasilnya adalah)</span>", sentence: "The result is [drop] <span class='translation'>(Hasilnya adalah)</span>", options: ["753", "853", "653"], answer: "753", explanation: "1.250 - 200 + 1 - 300 + 2 = 1051 - 300 + 2 = 753. <span class='translation'>1.250 - 200 + 1 - 300 + 2 = 1051 - 300 + 2 = 753.</span>" },
+      { type: "checkbox", prompt: "Select correct ways to calculate 500 - 98! <span class='translation'>(Pilih cara yang benar untuk menghitung 500 - 98)</span>", options: ["500 - 100 + 2", "500 - 100 - 2", "(500 - 100) + 2", "500 - 90 + 2"], answers: [0, 2], explanation: "98 is (100-2). So 500 - (100-2) = 500 - 100 + 2. <span class='translation'>98 adalah (100-2). Jadi 500 - (100-2) = 500 - 100 + 2.</span>" },
+      { type: "typing", prompt: "800 - 299 = ... (Use rounding trick) <span class='translation'>(Gunakan trik pembulatan)</span>", answer: "501", explanation: "800 - 300 + 1 = 501. <span class='translation'>800 - 300 + 1 = 501.</span>" },
+      { type: "pairing", prompt: "Match the subtraction problem with its result! <span class='translation'>(Cocokkan soal pengurangan dengan hasilnya)</span>", pairs: [{ left: "1000 - 498", right: "502" }, { left: "600 - 195", right: "405" }, { left: "750 - 198", right: "552" }] },
+      { type: "range", prompt: "The result of 1.000 - 499 is in the range... <span class='translation'>(Hasil dari 1.000 - 499 berada di rentang)</span>", min: 400, max: 600, answer: 501, explanation: "1000 - 500 + 1 = 501. <span class='translation'>1000 - 500 + 1 = 501.</span>" },
+      { type: "multiple_choice", prompt: "A pattern subtracts by 50. 1000, 950, 900, 850. The 5th number is... <span class='translation'>(Angka ke-5 adalah)</span>", options: ["750", "800", "825", "775"], answer: 1, explanation: "850 - 50 = 800. <span class='translation'>850 - 50 = 800.</span>" },
+      { type: "drag_drop", prompt: "Arrange steps to calculate 750 - 198! <span class='translation'>(Susun langkah menghitung 750 - 198)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Change 198 to 200 - 2 <span class='translation'>(Ubah 198 menjadi 200 - 2)</span>", "750 - 200 = 550 <span class='translation'>(750 - 200 = 550)</span>", "550 + 2 = 552 <span class='translation'>(550 + 2 = 552)</span>"], answer: "0,1,2", explanation: "Round up, subtract, then add back the difference. <span class='translation'>Bulatkan ke atas, kurangi, lalu kembalikan selisihnya.</span>" },
+      { type: "typing", prompt: "1.250 - 199 - 298 = ... <span class='translation'>(Hitung cepat)</span>", answer: "753", explanation: "1.250 - 200 + 1 - 300 + 2 = 753. <span class='translation'>1.250 - 200 + 1 - 300 + 2 = 753.</span>" },
+      { type: "dropdown", prompt: "1000 - 498 = 1000 - 500 ... <span class='translation'>(1000 - 498 = 1000 - 500 ...)</span>", sentence: "1000 - 498 = 1000 - 500 [drop]", options: ["+ 2", "- 2", "+ 1"], answer: "+ 2", explanation: "498 is (500-2). So 1000 - (500-2) = 1000 - 500 + 2. <span class='translation'>498 adalah (500-2). Jadi 1000 - (500-2) = 1000 - 500 + 2.</span>" },
+	  { type: "print_form", group: "Assessment C" }
+    ]
+  },
+  {
+    id: 9,
+    steps: [
+      { type: "typing", prompt: "A store has 500 bottles of milk. 98 sold in the morning and 102 in the afternoon. The remaining milk is... (Use combining trick) <span class='translation'>(Sisa susunya adalah... Gunakan trik menggabungkan)</span>", answer: "300", explanation: "98 + 102 = 200. 500 - 200 = 300. <span class='translation'>98 + 102 = 200. 500 - 200 = 300.</span>" },
+      { type: "multiple_choice", prompt: "In a library there are 1.000 books. 245 borrowed, 145 returned. How many books are left? <span class='translation'>(Berapa sisa buku sekarang?)</span>", options: ["600", "900", "800", "755"], answer: 1, explanation: "1000 - (245 - 145) = 1000 - 100 = 900. <span class='translation'>1000 - (245 - 145) = 1000 - 100 = 900.</span>" },
+      { type: "dropdown", prompt: "For discount problem: Rp299.000 cut by Rp45.000 then Rp55.000. The most efficient first step is... <span class='translation'>(Langkah pertama yang paling efisien adalah)</span>", sentence: "First step: [drop] <span class='translation'>(Langkah pertama:)</span>", options: ["Combine cuts: 45+55=100 thousand", "Subtract one by one", "Multiply cuts"], answer: "Combine cuts: 45+55=100 thousand", explanation: "Combining them makes a round 100.000, easier to subtract. <span class='translation'>Menggabungkannya menghasilkan 100.000 bulat, lebih mudah dikurangi.</span>" },
+      { type: "checkbox", prompt: "Select 2 correct visual/number line ways for: 1000 - 245 + 145! <span class='translation'>(Pilih 2 cara visual/garis bilangan yang benar)</span>", options: ["1000 - (245 - 145)", "1000 - 100", "1000 - 245, lalu - 145", "1000 + 100"], answers: [0, 1], explanation: "245 borrowed, 145 returned. Missing is 100. So 1000 - 100. <span class='translation'>245 dipinjam, 145 dikembalikan. Hilang 100. Jadi 1000 - 100.</span>" },
+      { type: "range", prompt: "Shoe store discount (Question 3). The remaining price is in the range... (in thousands) <span class='translation'>(Sisa harga sepatu berada di rentang... dalam ribuan)</span>", min: 100, max: 250, answer: 199, explanation: "299 - 100 = 199. <span class='translation'>299 - 100 = 199.</span>" },
+      { type: "typing", prompt: "Andi saves: Rp5.000, Rp8.500, Rp12.000. In the 5th week he saves... <span class='translation'>(Pada minggu ke-5 Andi menabung sebesar)</span>", answer: "19000", explanation: "Pattern adds 3.500. Week 4: 15.500. Week 5: 19.000. <span class='translation'>Pola menambah 3.500. Minggu 4: 15.500. Minggu 5: 19.000.</span>" },
+      { type: "pairing", prompt: "Match the word problem with its best strategy! <span class='translation'>(Cocokkan soal cerita dengan strategi terbaiknya)</span>", pairs: [{ left: "500 - 98 - 102", right: "Combine 98+102=200, then 500-200" }, { left: "198 + 45", right: "Rounding 200+45-2" }, { left: "1000 - 245 + 145", right: "Combine diff 245-145=100, then 1000-100" }] },
+      { type: "multiple_choice", prompt: "Initial price Rp299.000, cut Rp45.000, then cut Rp55.000. The remaining price... <span class='translation'>(Sisa harganya)</span>", options: ["Rp199.000", "Rp200.000", "Rp298.000", "Rp189.000"], answer: 0, explanation: "299.000 - (45.000 + 55.000) = 199.000. <span class='translation'>299.000 - (45.000 + 55.000) = 199.000.</span>" },
+      { type: "drag_drop", prompt: "Arrange logic to solve 1000 books problem (borrow 245, return 145)! <span class='translation'>(Susun logika memecahkan soal 1000 buku)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Find how many books are truly missing: 245 - 145 = 100 <span class='translation'>(Cari tahu berapa buku yang benar-benar hilang: 245 - 145 = 100)</span>", "Subtract initial amount by missing: 1000 - 100 <span class='translation'>(Kurangi jumlah awal dengan yang hilang: 1000 - 100)</span>", "Final result: 900 <span class='translation'>(Hasil akhir: 900)</span>"], answer: "0,1,2", explanation: "Find the net difference first, then subtract. <span class='translation'>Cari selisih bersih dahulu, lalu kurangkan.</span>" },
+      { type: "typing", prompt: "Savings week 1=10.000, week 2=15.000, week 3=20.000. Type savings for week 5! <span class='translation'>(Ketik tabungan minggu ke-5)</span>", answer: "30000", explanation: "Adds 5.000. Week 4=25.000. Week 5=30.000. <span class='translation'>Menambah 5.000. Minggu 4=25.000. Minggu 5=30.000.</span>" },
+	  { type: "print_form", group: "Assessment D" }
+    ]
+  },
+  {
+    id: 10,
+    steps: [
+      { type: "multiple_choice", prompt: "Pattern \\( 1, 3, 7, 13, 21, \\dots \\) continues with... <span class='translation'>(Pola tersebut dilanjutkan dengan)</span>", options: ["27", "29", "31", "33"], answer: 2, explanation: "Differences are +2, +4, +6, +8. Next is +10. 21 + 10 = 31. <span class='translation'>Selisihnya +2, +4, +6, +8. Berikutnya +10. 21 + 10 = 31.</span>" },
+      { type: "typing", prompt: "Find the difference between the differences! Pattern 1, 3, 7, 13, 21. Type the 6th number! <span class='translation'>(Ketik angka ke-6 nya)</span>", answer: "31", explanation: "Differences grow by 2. Next difference is 10. 21 + 10 = 31. <span class='translation'>Selisih bertambah 2. Selisih berikutnya 10. 21 + 10 = 31.</span>" },
+      { type: "dropdown", prompt: "The first differences of pattern 1, 3, 7, 13 are... <span class='translation'>(Selisih pertama dari pola tersebut adalah)</span>", sentence: "The differences are [drop]", options: ["+2, +4, +6, +8", "+1, +2, +3, +4", "+2, +3, +4, +5"], answer: "+2, +4, +6, +8", explanation: "3-1=2, 7-3=4, 13-7=6. <span class='translation'>3-1=2, 7-3=4, 13-7=6.</span>" },
+      { type: "checkbox", prompt: "Which statements are true about the pattern 1, 3, 7, 13, 21? <span class='translation'>(Pernyataan mana yang benar tentang pola tersebut)</span>", options: ["The difference between numbers always increases by 2", "This is called a second-order arithmetic pattern", "The next number is found by adding multiples of 2 (2, 4, 6, 8)", "The 6th number is 28"], answers: [0, 1, 2], explanation: "The differences increase by 2. It's a level 2 pattern. The 6th is 31, not 28. <span class='translation'>Selisihnya bertambah 2. Ini pola tingkat 2. Angka ke-6 adalah 31, bukan 28.</span>" },
+      { type: "pairing", prompt: "Match the pattern with its type! <span class='translation'>(Cocokkan pola dengan jenisnya)</span>", pairs: [{ left: "5, 10, 15, 20...", right: "Simple Arithmetic" }, { left: "1, 3, 7, 13, 21...", right: "Increasing Difference" }, { left: "100, 90, 80, 70...", right: "Descending Arithmetic" }] },
+      { type: "range", prompt: "Pattern 2, 4, 8, 14, 22... (Diff: +2, +4, +6, +8). The 6th number is in the range... <span class='translation'>(Angka ke-6 berada di rentang)</span>", min: 30, max: 35, answer: 32, explanation: "Next diff is +10. 22 + 10 = 32. <span class='translation'>Selisih berikutnya +10. 22 + 10 = 32.</span>" },
+      { type: "typing", prompt: "Calculate combination: (1.250 - 199) + 99 = ... <span class='translation'>(Hitung kombinasi)</span>", answer: "1150", explanation: "1051 + 99 = 1051 + 100 - 1 = 1150. <span class='translation'>1051 + 99 = 1051 + 100 - 1 = 1150.</span>" },
+      { type: "multiple_choice", prompt: "A pattern is subtracted by 15 then added by 5. First number is 100. What is the 4th number? <span class='translation'>(Berapakah angka ke-4?)</span>", options: ["80", "75", "85", "90"], answer: 1, explanation: "1st:100. 2nd:85. 3rd:90. 4th:90-15=75. <span class='translation'>1:100, 2:85, 3:90, 4:75. Jawabannya 75.</span>" },
+      { type: "drag_drop", prompt: "Arrange steps to find the 6th number of 1, 3, 7, 13, 21! <span class='translation'>(Susun langkah mencari angka ke-6)</span>", sentence: "[drop] -> [drop] -> [drop]", bank: ["Write differences: 2, 4, 6, 8 <span class='translation'>(Tulis selisihnya: 2, 4, 6, 8)</span>", "Find next difference: 10 <span class='translation'>(Cari selisih berikutnya: 10)</span>", "Add 10 to last number: 21 + 10 = 31 <span class='translation'>(Tambahkan 10 ke angka terakhir: 21 + 10 = 31)</span>"], answer: "0,1,2", explanation: "Find the pattern of differences, then apply it. <span class='translation'>Cari pola selisihnya, lalu terapkan.</span>" },
+      { type: "typing", prompt: "Combination pattern: 1.000.000 - 99.999 = ... (Use rounding trick 100.000 - 1) <span class='translation'>(Gunakan trik pembulatan)</span>", answer: "900001", explanation: "1.000.000 - 100.000 + 1 = 900.000 + 1 = 900.001. <span class='translation'>1.000.000 - 100.000 + 1 = 900.000 + 1 = 900.001.</span>" },
+	  { type: "print_form", group: "Assessment E" }
+    ]
+  },
+  // ===== SECTION 7: FEEDBACK PORTAL =====
+  {
+    id: 11,
+    steps: [
+      { 
+        type: "theory", 
+        title: "Feedback & Reflection", 
+        body: `<p>Congratulations! You have completed today's math adventure.</p><div class="tip-box"><b>Learning Feedback:</b><br>Today you learned the 'Number Detective' trick to quickly calculate word problems and understand number patterns. You are becoming proficient in using rounding techniques (Combo 10/100 Trick, e.g., treating 99 as 100-1) and combining subtrahends, which is very useful for school exams to save time and minimize calculation errors.</div><p>Please support the student to try their independent practice on the portal!</p><a href="https://learn.algonova.id/login" target="_blank" class="action-btn active" style="display:block; text-align:center; text-decoration:none; max-width:320px; margin: 20px auto 0;">🚀 Login to Portal <span class="translation" style="display:inline; color:#fff; margin:0;">(Login ke Portal)</span></a><p class="translation">Selamat! Kamu telah menyelesaikan petualangan matematika hari ini. Hari ini kamu belajar trik 'Detektif Angka' untuk menghitung cepat soal cerita dan memahami pola bilangan. Kamu mulai mahir menggunakan teknik pembulatan (Trik Kombo 10/100) serta menggabungkan angka pengurangan, yang sangat berguna untuk ujian sekolah agar lebih hemat waktu dan meminimalkan kesalahan hitung. Mohon dukung untuk mencoba latihan mandirinya di portal ya! Silakan login ke learn.algonova.id untuk latihan seru lainnya.</p>` 
+      }
+    ]
+  }
+];
+
+// --- MAP RENDERING ---
+function renderMap() {
+  const container = $('#mapContainer');
+  const svg = $('#mapSvg');
+  container.querySelectorAll('.map-node').forEach(n => n.remove());
+  svg.innerHTML = '';
+
+  const connections = [
+    [0,1],[1,2],[2,3],[3,4],[4,5], 
+    [5,6],[5,7],[5,8],[5,9],[5,10], 
+    [6,11],[7,11],[8,11],[9,11],[10,11] 
+  ];
+
+  connections.forEach(([a, b]) => {
+    const p1 = App.nodePositions[a];
+    const p2 = App.nodePositions[b];
+    const midY = (p1.y + p2.y) / 2;
+    const pathD = `M ${p1.x} ${p1.y} C ${p1.x} ${midY} ${p2.x} ${midY} ${p2.x} ${p2.y}`;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathD);
+    path.setAttribute('stroke', '#e5e5e5');
+    path.setAttribute('stroke-width', '6');
+    path.setAttribute('stroke-dasharray', '8 8');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(path);
+  });
+
+  App.lessonMeta.forEach((meta, i) => {
+    const pos = App.nodePositions[i];
+    const isCompleted = App.state.completedLessons.includes(i);
+    let isAvailable = true; 
+    
+    let stateClass = 'locked';
+    if (isCompleted) stateClass = 'completed';
+    else if (isAvailable) stateClass = 'available';
+
+    const node = el('div', `map-node ${stateClass}`, meta.icon);
+    node.style.left = `${(pos.x / 800) * 100}%`;
+    node.style.top = `${(pos.y / 920) * 100}%`; 
+    
+    const tooltip = el('div', 'node-tooltip', meta.title);
+    node.appendChild(tooltip);
+    
+    const label = el('div', 'node-label', meta.title);
+    if (meta.time) {
+      const timeLabel = el('div', 'node-time-label', meta.time);
+      label.appendChild(timeLabel);
+    }
+    node.appendChild(label);
+    
+    if (isAvailable || isCompleted) {
+      node.addEventListener('click', () => startLesson(i));
+    }
+    container.appendChild(node);
+  });
+}
+
+// --- LESSON LOGIC ---
+function startLesson(lessonId) {
+  App.state.currentLessonId = lessonId;
+  App.state.currentStepIndex = 0;
+  App.state.correctCount = 0;
+  App.state.totalAnswered = 0;
+  App.state.stepAnswered = false;
+  App.state.hearts = 5; 
+  App.state.lessonHistory = []; // TAMBAHKAN INI UNTUK CATATAN JAWABAN
+  $('#hearts').textContent = App.state.hearts;
+
+  $('#mapView').style.display = 'none';
+  $('#lessonView').classList.add('active');
+  $('#lessonHearts').textContent = App.state.hearts;
+  $('#lessonTime').textContent = App.lessonMeta[lessonId].time;
+  
+  renderStep();
+}
+
+function renderStep() {
+  const lesson = LESSONS[App.state.currentLessonId];
+  const step = lesson.steps[App.state.currentStepIndex];
+  
+  App.state.stepAnswered = false;
+  App.state.selectedOption = null;
+  App.state.draggedValue = null;
+  App.state.selectedPair = null;
+  App.state.matchedPairs = 0;
+  App.state.canCheck = false;
+  
+  const progress = (App.state.currentStepIndex / lesson.steps.length) * 100;
+  $('#progressBar').style.width = `${progress}%`;
+  
+  $('#feedback').className = 'feedback';
+  $('#feedback').innerHTML = '';
+  
+  const content = $('#lessonContent');
+  content.innerHTML = '';
+  
+  switch(step.type) {
+    case 'theory': renderTheory(content, step); break;
+    case 'multiple_choice': renderMultipleChoice(content, step); break;
+    case 'typing': renderTyping(content, step); break;
+    case 'dropdown': renderDropdown(content, step); break;
+    case 'drag_drop': renderDragDrop(content, step); break;
+    case 'pairing': renderPairing(content, step); break;
+    case 'checkbox': renderCheckbox(content, step); break;
+    case 'range': renderRange(content, step); break;
+    case 'print_form': renderPrintForm(content, step); break; // TAMBAHKAN INI
+  }
+  
+  try {
+    if (window.renderMathInElement) {
+      renderMathInElement(content, {
+        delimiters: [
+          {left: "\\(", right: "\\)", display: false},
+          {left: "$$", right: "$$", display: true}
+        ],
+        throwOnError: false
+      });
+    }
+  } catch(e) {
+    console.error("KaTeX Render Error:", e);
+  }
+  
+  updateActionBtn();
+}
+
+function updateActionBtn() {
+  const btn = $('#actionBtn');
+  const resetBtn = $('#resetBtn');
+  btn.classList.remove('active', 'hidden');
+  resetBtn.classList.add('hidden');
+  
+  const step = LESSONS[App.state.currentLessonId].steps[App.state.currentStepIndex];
+  
+  // Jika step saat ini adalah form cetak, tampilkan tombol Finish & Continue
+  if (step.type === 'print_form') {
+    btn.textContent = 'Finish & Continue';
+    btn.classList.add('active');
+    App.state.stepAnswered = true; // Izinkan tombol untuk di-klik langsung
+  } else if (App.state.stepAnswered) {
+    btn.textContent = 'Continue';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = 'Check';
+    if (App.state.canCheck) {
+      btn.classList.add('active');
+      if (step.type !== 'theory') {
+        resetBtn.classList.remove('hidden');
+      }
+    }
+  }
+}
+
+// --- STEP RENDERERS ---
+function renderTheory(container, step) {
+  container.innerHTML = `
+    <div class="theory-card">
+      <span class="theory-badge">THEORY</span>
+      <h2>${step.title}</h2>
+      <div class="theory-body">${step.body}</div>
+    </div>
+  `;
+  App.state.stepAnswered = true;
+  updateActionBtn();
+}
+
+function renderMultipleChoice(container, step) {
+  container.innerHTML = `
+    <div class="q-prompt">${step.prompt}</div>
+    ${step.sub ? `<div class="q-sub">${step.sub}</div>` : ''}
+    ${step.image ? `<div class="q-image">${step.image}</div>` : ''}
+    <div class="options" id="optionsList"></div>
+  `;
+  const list = $('#optionsList');
+  step.options.forEach((opt, i) => {
+    const o = el('div', 'option', `<span class="o-key">${i+1}</span> <span>${opt}</span>`);
+    o.addEventListener('click', () => {
+      if (App.state.stepAnswered) return;
+      list.querySelectorAll('.option').forEach(x => x.classList.remove('selected'));
+      o.classList.add('selected');
+      App.state.selectedOption = i;
+      App.state.canCheck = true;
+      updateActionBtn();
+    });
+    list.appendChild(o);
+  });
+}
+
+function renderTyping(container, step) {
+  container.innerHTML = `
+    <div class="q-prompt">${step.prompt}</div>
+    ${step.sub ? `<div class="q-sub">${step.sub}</div>` : ''}
+    <input type="text" class="typing-input" id="typingInput" placeholder="Type your answer..." autocomplete="off">
+    ${step.hint ? `<div class="q-hint">💡 ${step.hint}</div>` : ''}
+  `;
+  const input = $('#typingInput');
+  input.focus();
+  input.addEventListener('input', () => {
+    if (App.state.stepAnswered) return;
+    App.state.canCheck = input.value.trim() !== '';
+    updateActionBtn();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && App.state.canCheck) checkAnswer();
+  });
+}
+
+function renderDropdown(container, step) {
+  let sentenceHtml = step.sentence.replace('[drop]', 
+    `<select class="dropdown-select" id="ddSelect">
+      <option value="">?</option>
+      ${step.options.map(o => `<option value="${o}">${o}</option>`).join('')}
+    </select>`);
+    
+  container.innerHTML = `
+    <div class="q-prompt">${step.prompt}</div>
+    <div class="q-sub">Choose the correct answer <span class="translation">(Pilih jawaban yang tepat)</span></div>
+    <div class="sentence">${sentenceHtml}</div>
+  `;
+  $('#ddSelect').addEventListener('change', (e) => {
+    App.state.canCheck = e.target.value !== '';
+    updateActionBtn();
+  });
+}
+
+function renderDragDrop(container, step) {
+  let sentenceHtml = step.sentence;
+  sentenceHtml = sentenceHtml.replace(/\[drop\]/g, `<div class="drop-zone"></div>`);
+    
+  container.innerHTML = `
+    <div class="q-prompt">${step.prompt}</div>
+    <div class="q-sub">Drag the answer to the correct box (in order) <span class="translation">(Seret jawaban ke kotak yang benar secara berurutan)</span></div>
+    <div class="sentence" style="text-align:center; margin: 30px 0; line-height: 2.4;">${sentenceHtml}</div>
+    <div class="drag-bank" id="dragBank">
+      ${step.bank.map((b, i) => `<div class="drag-item" id="drag-${i}" data-id="${i}" draggable="true">${b}</div>`).join('')}
+    </div>
+  `;
+  
+  document.querySelectorAll('.drag-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData("text", e.target.id);
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => item.classList.remove('dragging'));
+  });
+  
+  document.querySelectorAll('.drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      zone.classList.add('over');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('over');
+      const id = e.dataTransfer.getData("text");
+      const dragged = document.getElementById(id);
+      if (dragged) {
+        const oldItem = zone.querySelector('.drag-item');
+        if (oldItem) {
+          const oldId = oldItem.id;
+          const oldDragged = document.getElementById(oldId);
+          if (oldDragged) oldDragged.style.visibility = 'visible';
+        }
+        zone.innerHTML = '';
+        zone.appendChild(dragged.cloneNode(true));
+        zone.dataset.filledId = dragged.dataset.id; // SIMPAN ID DI DROPZONE
+        zone.classList.add('filled');
+        dragged.style.visibility = 'hidden';
+        App.state.canCheck = true;
+        updateActionBtn();
+      }
+    });
+  });
+}
+
+function renderPairing(container, step) {
+  container.innerHTML = `
+    <div class="q-prompt">${step.prompt}</div>
+    <div class="q-sub">Click the matching pairs (left to right) <span class="translation">(Klik pasangan yang cocok dari kiri ke kanan)</span></div>
+    <div class="pair-grid">
+      <div class="pair-col" id="leftCol"></div>
+      <div class="pair-col" id="rightCol"></div>
+    </div>
+  `;
+  const leftCol = $('#leftCol');
+  const rightCol = $('#rightCol');
+  const rightItems = [...step.pairs].sort(() => Math.random() - 0.5);
+  
+  step.pairs.forEach(p => {
+    const li = el('div', 'pair-item', p.left);
+    li.dataset.val = p.right;
+    li.dataset.side = 'left';
+    li.addEventListener('click', () => handlePairClick(li));
+    leftCol.appendChild(li);
+  });
+  rightItems.forEach(p => {
+    const ri = el('div', 'pair-item', p.right);
+    ri.dataset.val = p.right;
+    ri.dataset.side = 'right';
+    ri.addEventListener('click', () => handlePairClick(ri));
+    rightCol.appendChild(ri);
+  });
+}
+
+function renderCheckbox(container, step) {
+  container.innerHTML = `
+    <div class="q-prompt">${step.prompt}</div>
+    ${step.sub ? `<div class="q-sub">${step.sub}</div>` : ''}
+    <div class="options" id="cbList"></div>
+  `;
+  const list = $('#cbList');
+  step.options.forEach((opt, i) => {
+    const o = el('div', 'checkbox-option', `<div class="checkbox-box"></div> <span>${opt}</span>`);
+    o.dataset.idx = i;
+    o.addEventListener('click', () => {
+      if (App.state.stepAnswered) return;
+      o.classList.toggle('checked');
+      App.state.canCheck = list.querySelectorAll('.checked').length > 0;
+      updateActionBtn();
+    });
+    list.appendChild(o);
+  });
+}
+
+function renderRange(container, step) {
+  container.innerHTML = `
+    <div class="q-prompt">${step.prompt}</div>
+    ${step.sub ? `<div class="q-sub">${step.sub}</div>` : ''}
+    <div class="range-wrap">
+      <div class="range-row">
+        <span class="range-unit">Min <span class="translation" style="display:inline; margin:0; font-size:12px;">(Min)</span>: ${step.min}</span>
+        <span class="range-value" id="rangeVal">${step.min}</span>
+        <span class="range-unit">Max <span class="translation" style="display:inline; margin:0; font-size:12px;">(Maks)</span>: ${step.max}</span>
+      </div>
+      <input type="range" class="range-slider" id="rangeSlider" min="${step.min}" max="${step.max}" value="${step.min}">
+    </div>
+  `;
+  const slider = $('#rangeSlider');
+  slider.addEventListener('input', () => {
+    $('#rangeVal').textContent = slider.value;
+    App.state.canCheck = true;
+    updateActionBtn();
+  });
+}
+
+// --- INTERACTION HELPERS ---
+function handlePairClick(item) {
+  if (App.state.stepAnswered || item.classList.contains('matched')) return;
+  if (!App.state.selectedPair) {
+    App.state.selectedPair = item;
+    item.classList.add('selected');
+  } else {
+    if (App.state.selectedPair === item) {
+      item.classList.remove('selected');
+      App.state.selectedPair = null;
+    } else if (App.state.selectedPair.dataset.side === item.dataset.side) {
+      App.state.selectedPair.classList.remove('selected');
+      App.state.selectedPair = item;
+      item.classList.add('selected');
+    } else {
+      if (App.state.selectedPair.dataset.val === item.dataset.val) {
+        App.state.selectedPair.classList.remove('selected');
+        App.state.selectedPair.classList.add('matched');
+        item.classList.add('matched');
+        App.state.matchedPairs++;
+        if (App.state.matchedPairs === LESSONS[App.state.currentLessonId].steps[App.state.currentStepIndex].pairs.length) {
+          App.state.canCheck = true;
+          updateActionBtn();
+        }
+      } else {
+        const w1 = App.state.selectedPair;
+        const w2 = item;
+        w1.classList.add('wrong');
+        w2.classList.add('wrong');
+        setTimeout(() => {
+          w1.classList.remove('wrong', 'selected');
+          w2.classList.remove('wrong');
+        }, 500);
+      }
+      App.state.selectedPair = null;
+    }
+  }
+}
+
+// --- FUNGSI FORM CETAK ASSESSMENT ---
+function renderPrintForm(container, step) {
+  const today = new Date().toISOString().split('T')[0];
+  container.innerHTML = `
+    <div class="theory-card">
+      <span class="theory-badge">ASSESSMENT COMPLETED</span>
+      <h2>Generate Report <span class="translation">(Buat Laporan)</span></h2>
+      <div class="theory-body">
+        <p>You have finished the assessment. Fill in your details to print the result. <span class='translation'>(Kamu telah menyelesaikan asesmen. Isi data diri untuk mencetak hasil.)</span></p>
+        <div style="margin: 20px 0; display:grid; gap:12px;">
+          <input type="text" id="studentName" class="typing-input" placeholder="Enter your name... / Nama..." style="font-size:16px;">
+          <input type="date" id="studentDate" class="typing-input" value="${today}" style="font-size:16px;">
+        </div>
+        <button class="action-btn active" id="printReportBtn" style="margin-top:10px;">🖨️ Print Result <span class="translation" style="display:inline; color:#fff; margin-left:4px;">(Cetak Hasil)</span></button>
+      </div>
+    </div>
+  `;
+  
+  const printBtn = container.querySelector('#printReportBtn');
+  if(printBtn) {
+    printBtn.addEventListener('click', function() {
+      const name = container.querySelector('#studentName').value || 'Anonymous';
+      const date = container.querySelector('#studentDate').value || today;
+      generateAssessmentReport(name, date, step.group);
+    });
+  }
+}
+
+function generateAssessmentReport(name, date, group) {
+  // Buka tab baru DI PALING AWAL agar tidak diblokir browser
+  const win = window.open('', '_blank');
+  if (!win) {
+    alert("Please allow pop-ups to generate the report. / Mohon izinkan pop-up untuk mencetak laporan.");
+    return;
+  }
+
+  const accuracy = Math.round((App.state.correctCount / App.state.totalAnswered) * 100) || 0;
+  let tableRows = '';
+  
+  // Fungsi pengaman agar tidak crash jika data jawaban kosong/undefined
+  const safeString = (str) => (str || "").toString();
+  
+  App.state.lessonHistory.forEach((item, index) => {
+    const cleanPrompt = safeString(item.prompt).replace(/<span class='translation'>.*?<\/span>/g, '').trim();
+    const cleanStudentAns = safeString(item.studentAnswer).replace(/<span class='translation'>.*?<\/span>/g, '').trim();
+    const cleanCorrectAns = safeString(item.correctAnswer).replace(/<span class='translation'>.*?<\/span>/g, '').trim();
+    
+    tableRows += `
+      <tr>
+        <td style="text-align:center;">${index + 1}</td>
+        <td>${cleanPrompt}</td>
+        <td style="color:${item.isCorrect ? 'green' : 'red'};">${cleanStudentAns}</td>
+        <td>${cleanCorrectAns}</td>
+        <td style="text-align:center; font-weight:bold; color:${item.isCorrect ? 'green' : 'red'};">${item.isCorrect ? '✔' : '✖'}</td>
+      </tr>
+    `;
+  });
+  
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Assessment Result - ${name}</title>
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+      <style>
+        body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+        h1 { color: #58cc02; border-bottom: 2px solid #58cc02; padding-bottom: 10px; }
+        .info-box { background: #f7f7f7; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .info-box p { margin: 5px 0; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: top; }
+        th { background-color: #58cc02; color: white; }
+        .katex { font-size: 1em !important; }
+        @media print { button { display: none; } }
+      </style>
+    </head>
+    <body>
+      <h1>ASSESSMENT RESULT</h1>
+      <div class="info-box">
+        <p><b>Name:</b> ${name}</p>
+        <p><b>Date:</b> ${date}</p>
+        <p><b>Topic:</b> Number Patterns & Quick Tricks (Pola Bilangan & Trik Cepat)</p>
+        <p><b>Assessment Group:</b> ${group}</p>
+        <p><b>Score:</b> ${App.state.correctCount}/${App.state.totalAnswered} (${accuracy}%)</p>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:5%;">No.</th>
+            <th style="width:40%;">Question</th>
+            <th style="width:20%;">Student Answer</th>
+            <th style="width:20%;">Correct Answer</th>
+            <th style="width:15%;">Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+      <button onclick="window.print()" style="margin-top:20px; padding:10px 20px; background:#1cb0f6; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:16px;">Print Page</button>
+      
+      <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"><\/script>
+      <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"><\/script>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          if (window.renderMathInElement) {
+            renderMathInElement(document.body, {
+              delimiters: [
+                {left: "\\\\(", right: "\\\\)", display: false},
+                {left: "$$", right: "$$", display: true}
+              ],
+              throwOnError: false
+            });
+          }
+        });
+      <\/script>
+    </body>
+    </html>
+  `;
+  
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
+// --- CHECK LOGIC ---
+function getCorrectAnswerText(step) {
+  switch(step.type) {
+    case 'multiple_choice': return step.options[step.answer];
+    case 'typing': return step.answer;
+    case 'dropdown': return step.answer;
+    case 'drag_drop': return step.answer.split(',').join(' ➔ ');
+    case 'checkbox': return step.answers.map(i => step.options[i]).join(', ');
+    case 'range': return step.answer;
+    case 'pairing': return "All pairs matched correctly. <span class='translation'>(Semua pasangan sudah dicocokkan dengan benar.)</span>";
+    default: return "";
+  }
+}
+
+function checkAnswer() {
+  if (!App.state.stepAnswered && App.state.canCheck) {
+    const lesson = LESSONS[App.state.currentLessonId];
+    const step = lesson.steps[App.state.currentStepIndex];
+    let isCorrect = false;
+    let studentAnswerText = "";
+    
+    switch(step.type) {
+      case 'multiple_choice':
+        isCorrect = App.state.selectedOption === step.answer;
+        studentAnswerText = step.options[App.state.selectedOption];
+        break;
+      case 'typing':
+        isCorrect = $('#typingInput').value.toLowerCase().trim() === step.answer.toLowerCase();
+        studentAnswerText = $('#typingInput').value;
+        break;
+      case 'dropdown':
+        isCorrect = $('#ddSelect').value === step.answer;
+        studentAnswerText = $('#ddSelect').value;
+        break;
+      case 'drag_drop':
+        const zones = document.querySelectorAll('.drop-zone');
+        const placedIds = Array.from(zones).map(z => z.dataset.filledId);
+        const correctIds = step.answer.split(',');
+        isCorrect = placedIds.length === correctIds.length && placedIds.every((v, i) => v === correctIds[i].trim());
+        studentAnswerText = placedIds.map(id => step.bank[parseInt(id)]).join(' ➔ ');
+        break;
+      case 'pairing':
+        isCorrect = App.state.matchedPairs === step.pairs.length;
+        studentAnswerText = "Matched all pairs correctly";
+        break;
+      case 'checkbox':
+        const checked = Array.from(document.querySelectorAll('.checkbox-option.checked')).map(el => parseInt(el.dataset.idx));
+        isCorrect = checked.length === step.answers.length && checked.every(v => step.answers.includes(v));
+        studentAnswerText = checked.map(i => step.options[i]).join(', ');
+        break;
+      case 'range':
+        isCorrect = parseInt($('#rangeSlider').value) === step.answer;
+        studentAnswerText = $('#rangeSlider').value;
+        break;
+    }
+    
+    App.state.stepAnswered = true;
+    App.state.totalAnswered++;
+    if (isCorrect) App.state.correctCount++;
+    
+    // CATAT JAWABAN UNTUK LAPORAN
+    App.state.lessonHistory.push({
+      prompt: step.prompt,
+      studentAnswer: studentAnswerText,
+      correctAnswer: getCorrectAnswerText(step),
+      isCorrect: isCorrect
+    });
+    
+    showFeedback(isCorrect, step);
+    updateActionBtn();
+  } else if (App.state.stepAnswered) {
+    nextStep();
+  }
+}
+
+function showFeedback(isCorrect, step) {
+  const feedback = $('#feedback');
+  feedback.className = `feedback show ${isCorrect ? 'correct' : 'wrong'}`;
+  
+  let html = `<div class="feedback-title">${isCorrect ? '✅ Correct! <span class="translation">Benar!</span>' : '❌ Incorrect <span class="translation">Kurang Tepat</span>'}</div>`;
+  
+  if (isCorrect) {
+    html += `<div class="feedback-text">Great job, keep going! <span class="translation">Kerja bagus, lanjutkan!</span></div>`;
+    if (step.explanation) {
+      html += `<div class="feedback-text" style="margin-top:8px; font-size:13px; color:var(--blue-dark);">💡 ${step.explanation}</div>`;
+    }
+  } else {
+    const correctAns = getCorrectAnswerText(step);
+    html += `<div class="feedback-text">Correct answer: <b>${correctAns}</b> <span class="translation">(Jawaban yang benar)</span></div>`;
+    if (step.explanation) {
+      html += `<div class="feedback-text" style="margin-top:8px; font-size:13px; color:var(--blue-dark);">💡 <b>How to solve:</b> ${step.explanation}</div>`;
+    } else {
+      html += `<div class="feedback-text" style="margin-top:8px; font-size:13px; color:var(--text-light);">💡 Please check your math pattern or calculation again. <span class="translation">Periksa kembali pola atau hitungan matematisamu ya.</span></div>`;
+    }
+  }
+
+  feedback.innerHTML = html;
+  
+  if (!isCorrect) {
+    App.state.hearts--;
+    $('#hearts').textContent = App.state.hearts;
+    $('#lessonHearts').textContent = App.state.hearts;
+    if (App.state.hearts <= 0) {
+      // Optional: Handle game over logic here
+    }
+  }
+}
+
+function nextStep() {
+  const lesson = LESSONS[App.state.currentLessonId];
+  if (App.state.currentStepIndex < lesson.steps.length - 1) {
+    App.state.currentStepIndex++;
+    renderStep();
+  } else {
+    completeLesson();
+  }
+}
+
+function completeLesson() {
+  App.state.completedLessons.push(App.state.currentLessonId);
+  $('#lessonView').classList.remove('active');
+  $('#completeView').style.display = 'flex';
+  
+  const accuracy = Math.round((App.state.correctCount / App.state.totalAnswered) * 100) || 0;
+  $('#finalXp').textContent = `+${App.state.correctCount * 10} XP`;
+  $('#finalAccuracy').textContent = `${accuracy}%`;
+  $('#finalCorrect').textContent = `${App.state.correctCount}/${App.state.totalAnswered}`;
+  
+  renderMap();
+}
+
+// --- EVENT LISTENERS ---
+document.addEventListener('DOMContentLoaded', () => {
+  $('#actionBtn').addEventListener('click', checkAnswer);
+  
+  // Fungsi tombol reset: render ulang step saat ini dari awal
+  $('#resetBtn').addEventListener('click', () => {
+    renderStep();
+  });
+  
+  $('#lessonClose').addEventListener('click', () => {
+    $('#lessonView').classList.remove('active');
+    $('#mapView').style.display = 'block';
+  });
+  
+  $('#continueBtn').addEventListener('click', () => {
+    $('#completeView').style.display = 'none';
+    $('#mapView').style.display = 'block';
+  });
+  
+  $('#openRulesBtn').addEventListener('click', () => $('#rulesOverlay').classList.add('show'));
+  $('#closeRulesBtn').addEventListener('click', () => $('#rulesOverlay').classList.remove('show'));
+  $('#understandBtn').addEventListener('click', () => $('#rulesOverlay').classList.remove('show'));
+
+  renderMap();
+});
+</script>
+</body>
+</html>
